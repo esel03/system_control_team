@@ -6,7 +6,7 @@ from db.connect import Base
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
