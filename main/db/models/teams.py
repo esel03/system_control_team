@@ -1,5 +1,5 @@
 from sqlalchemy import Uuid, String, Boolean, ForeignKey, Index
-from sqlalchemy.orm import Mapped, mapped_column, column
+from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 from main.db.connect import Base
 
