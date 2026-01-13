@@ -1,0 +1,106 @@
+/* Обнуление и базовые стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    color: #2c3e50;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Шапка с градиентом */
+header {
+    background: linear-gradient(120deg, #007acc, #005a99);
+    color: white;
+    text-align: center;
+    padding: 2rem 1rem;
+    border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* Основное содержимое */
+main {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.intro {
+    font-size: 1.3rem;
+    color: #34495e;
+    margin-bottom: 1.8rem;
+    max-width: 600px;
+    padding: 0 1rem;
+}
+
+/* Красивая кнопка */
+#my-button {
+    padding: 12px 28px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(37, 117, 252, 0.3);
+    transition: transform 0.3s, box-shadow 0.3s, opacity 0.2s;
+    outline: none;
+}
+
+#my-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(37, 117, 252, 0.4);
+}
+
+#my-button:active {
+    transform: translateY(1px);
+    opacity: 0.9;
+}
+
+/* Подвал */
+footer {
+    text-align: center;
+    padding: 1.2rem;
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    font-size: 0.95rem;
+    margin-top: auto;
+}
+
+footer p {
+    opacity: 0.9;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2rem;
+    }
+
+    .intro {
+        font-size: 1.1rem;
+    }
+
+    #my-button {
+        padding: 10px 24px;
+        font-size: 1rem;
+    }
+}
