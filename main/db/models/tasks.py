@@ -49,7 +49,7 @@ class task(Base):
     executor: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("teams.user_id"), nullable=False, comment="исполнитель задачи"
     )
-    task_update_author: Mapped[datetime] = mapped_column(
+    task_update_author: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("teams.user_id"),
         nullable=True,
