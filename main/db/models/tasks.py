@@ -1,5 +1,6 @@
 from sqlalchemy import Uuid, String, ForeignKey, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Enum as SAEnum
 import uuid
 from main.db.connect import Base
 from enum import Enum
@@ -28,7 +29,7 @@ class Status(Enum):
     canceled = "отменена"
 
 
-class task(Base):
+class Task(Base):
     __tablename__ = "tasks"
 
     task_id: Mapped[uuid.UUID] = mapped_column(
@@ -44,31 +45,31 @@ class task(Base):
         String, nullable=False, comment="описание задачи"
     )
     author: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("teams.user_id"), nullable=False, comment="Автор задачи"
+        Uuid, ForeignKey("users.user_id"), nullable=False, comment="Автор задачи"
     )
     executor: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("teams.user_id"), nullable=False, comment="исполнитель задачи"
+        Uuid, ForeignKey("users.user_id"), nullable=False, comment="исполнитель задачи"
     )
     task_update_author: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("teams.user_id"),
+        ForeignKey("users.user_id"),
         nullable=True,
         comment="последний редактор задачи",
     )
     last_executor: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("teams.user_id"),
+        ForeignKey("users.user_id"),
         nullable=True,
         comment="предыдущий исполнитель задачи",
     )
     priority: Mapped[Priority] = mapped_column(
-        String, nullable=False, comment="приоритет"
+        SAEnum(Priority, byvalue=True), nullable=False, comment="приоритет"
     )
     status: Mapped[Status] = mapped_column(
-        String, nullable=False, comment="статус задачи"
+        SAEnum(Status, byvalue=True), nullable=False, comment="статус задачи"
     )
     difficulty: Mapped[Difficulty] = mapped_column(
-        String, nullable=False, comment="сложность задачи"
+        SAEnum(Difficulty, byvalue=True), nullable=False, comment="сложность задачи"
     )
     task_create_date: Mapped[datetime] = mapped_column(
         DateTime,

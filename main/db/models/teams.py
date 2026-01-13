@@ -1,5 +1,5 @@
-from sqlalchemy import Uuid, String, Boolean, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Uuid, String, Boolean, ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column, column
 import uuid
 from main.db.connect import Base
 
@@ -17,5 +17,5 @@ class Team(Base):
         String(100), comment="направление деятельности в команде"
     )
     is_chief: Mapped[bool] = mapped_column(
-        Boolean, default=False, unique=True, comment="является ли лидером команды"
+        Boolean, default=False, comment="является ли лидером команды"
     )
