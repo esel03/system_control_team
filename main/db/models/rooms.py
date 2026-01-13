@@ -1,6 +1,6 @@
 from db.connect import Base
 from typing import List
-from sqlalchemy import String, Uuid
+from sqlalchemy import String, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 
@@ -15,8 +15,8 @@ class Room(Base):
         String(50), nullable=False, comment="название комнаты"
     )
     list_role: Mapped[List[str]] = mapped_column(
-        List(String(70)), comment="список ролей/должностей"
+        JSON, comment="список ролей/должностей"
     )
     list_tag: Mapped[List[str]] = mapped_column(
-        List(String(70)), comment="список направлений ответственности/сфер"
+        JSON, comment="список направлений ответственности/сфер"
     )
