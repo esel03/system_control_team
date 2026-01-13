@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Uuid, String, Boolean
 import uuid
-from db.connect import Base
+from main.db.connect import Base
 
 
 class User(Base):

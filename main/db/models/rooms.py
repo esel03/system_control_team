@@ -1,4 +1,4 @@
-from db.connect import Base
+from main.db.connect import Base
 from typing import List
 from sqlalchemy import String, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column
