@@ -4,7 +4,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 
 
-class Rooms(Base):
+class Room(Base):
+    __tablename__ = "rooms"
+
     room_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, default=uuid.uuid4
     )
