@@ -1,5 +1,6 @@
 from db.connect import Base
-from sqlalchemy import String, List, Uuid
+from typing import List
+from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 
@@ -8,8 +9,14 @@ class Room(Base):
     __tablename__ = "rooms"
 
     room_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
+        Uuid, primary_key=True, default=uuid.uuid4, comment="гуид комнаты"
     )
-    name: Mapped[str] = mapped_column(String(50), nullable=False)
-    list_role: Mapped[List[str]] = mapped_column(List(String(70)))
-    list_tag: Mapped[List[str]] = mapped_column(List(String(70)))
+    name: Mapped[str] = mapped_column(
+        String(50), nullable=False, comment="название комнаты"
+    )
+    list_role: Mapped[List[str]] = mapped_column(
+        List(String(70)), comment="список ролей/должностей"
+    )
+    list_tag: Mapped[List[str]] = mapped_column(
+        List(String(70)), comment="список направлений ответственности/сфер"
+    )
