@@ -33,6 +33,7 @@ class JwtAuth:
             raise Exception("Invalid token")
         return data.get("sub")
 
+
 def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     try:
         payload = JwtAuth.decode_token(token)
