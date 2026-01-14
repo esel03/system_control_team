@@ -10,6 +10,7 @@ from main.schemas.auth import RegistrationIn
 from dataclasses import dataclass
 from pwdlib import PasswordHash
 
+jwt_token = JwtAuth()
 
 @dataclass
 class AuthRegUserServices:
@@ -20,7 +21,7 @@ class AuthRegUserServices:
         if await self.check_email(email=data.email):
             raise HTTPException(status_code=404, detail="Email занят")
         data.password = await self.get_password_hash(password=data.password)
-        return {"token": JwtAuth.create_access_token(await self.write_user(data=data))}
+        return (await jwt_token.create_access_token(user_id=str(await self.write_user(data=data))))
 
     async def get_password_hash(self, password):
         return self.password_hash.hash(password)

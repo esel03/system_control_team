@@ -1,4 +1,5 @@
 import jwt
+from dataclasses import dataclass
 from datetime import timedelta, datetime
 from main.config import settings
 
@@ -6,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-
+@dataclass
 class JwtAuth:
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXP_MINUTES = 30

@@ -19,4 +19,4 @@ def get_auth_service(
 async def registration_users(
     data: RegistrationIn, service: AuthRegUserServices = Depends(get_auth_service)
 ):
-    return await service.registration_services(data=data)
+    return {'token': f'{await service.registration_services(data=data)}'}
