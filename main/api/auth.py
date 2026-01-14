@@ -18,5 +18,5 @@ def get_auth_service(
 @router.post("/", summary="Регистрация пользователя", response_model=RegistrationOut)
 async def registration_users(
     data: RegistrationIn, service: AuthRegUserServices = Depends(get_auth_service)
-):
-    return {'token': f'{await service.registration_services(data=data)}'}
+) -> dict[str, str]:
+    return {"token": f"{await service.registration_services(data=data)}"}

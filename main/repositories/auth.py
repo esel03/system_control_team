@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from main.schemas.auth import RegistrationIn
+from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.db.models.users import User
@@ -9,12 +9,12 @@ from main.db.models.users import User
 class AuthRegUserRepository:
     db: AsyncSession
 
-    async def get_email(self, email):
+    async def get_email(self, email) -> str | None:
         stmt = (select(User.email)).where(User.email == email)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_user(self, data):
+    async def create_user(self, data) -> UUID:
         stmt = User(**data.model_dump())
         self.db.add(stmt)
         await self.db.commit()

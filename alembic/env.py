@@ -5,10 +5,6 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from main.db.models.users import User
-from main.db.models.rooms import Room
-from main.db.models.teams import Team
-from main.db.models.tasks import Task
 from main.db.base import Base
 
 # this is the Alembic Config object, which provides
