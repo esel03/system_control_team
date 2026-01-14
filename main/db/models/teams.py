@@ -1,4 +1,4 @@
-from sqlalchemy import Uuid, String, Boolean, ForeignKey, Index
+from sqlalchemy import Uuid, String, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 from main.db.base import Base
