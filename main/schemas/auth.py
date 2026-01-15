@@ -11,7 +11,6 @@ class RegistrationIn(BaseModel):
 
 
 class RegistrationOut(BaseModel):
-<<<<<<< HEAD
     email: str
 
 
@@ -20,8 +19,6 @@ class GetToken(BaseModel):
 
 class OutToken(BaseModel):
     refresh_token: str
-=======
-    email: EmailStr
 
 
 class LogIn(BaseModel):
@@ -36,4 +33,3 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: UUID
->>>>>>> main

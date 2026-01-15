@@ -8,13 +8,10 @@ from main.repositories.auth import AuthRegUserRepository
 from main.services.jwt import JwtAuth
 from main.services.utils import Utils
 
-<<<<<<< HEAD
 from fastapi import HTTPException, status
 from main.schemas.auth import RegistrationIn
-=======
 from fastapi import Depends, HTTPException, status
 from main.schemas.auth import RegistrationIn, LogIn, Token, TokenData
->>>>>>> main
 from dataclasses import dataclass
 from fastapi.security import OAuth2PasswordBearer
 
@@ -38,12 +35,10 @@ class AuthRegUserServices:
 
     async def _write_user(self, data) -> str:
         return await self.repository.create_user(data=data)
-<<<<<<< HEAD
     
     async def update_token(self, data) -> str:
         return await self.jwt_token.new_access_token(data=data)
 
-=======
 
     async def _login_service(self, data: LogIn) -> Token:
         user = await self.repository.get_user(data=data)
@@ -73,4 +68,3 @@ class AuthRegUserServices:
                 detail=str(e),
                 headers={"WWW-Authenticate": "Bearer"},
             )
->>>>>>> main
