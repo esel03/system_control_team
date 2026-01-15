@@ -11,3 +11,10 @@ class RegistrationIn(BaseModel):
 
 class RegistrationOut(BaseModel):
     email: str
+
+
+class GetToken(BaseModel):
+    refresh_token: str
+
+class OutToken(BaseModel):
+    refresh_token: str

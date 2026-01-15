@@ -1,7 +1,9 @@
 import jwt
+from fastapi import HTTPException, status
 from dataclasses import dataclass
 from datetime import timedelta, datetime
 from main.config import settings
+from main.redis import redis_client
 
 from fastapi.security import OAuth2PasswordBearer
 
@@ -12,16 +14,36 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 class JwtAuth:
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXP_MINUTES = 30
+    REFRESH_TOKEN_EXPIRE_DAYS = 7
     SECRET_KEY = settings.SECRET_KEY
 
     async def create_access_token(self, user_id: str) -> str:
-        data_to_encode = {"sub": user_id}
-        exp_time = datetime.now() + timedelta(minutes=self.ACCESS_TOKEN_EXP_MINUTES)
-        data_to_encode.update({"exp": exp_time})
-        encoded_jwt = jwt.encode(
-            data_to_encode, self.SECRET_KEY, algorithm=self.ALGORITHM
+        access_token = await self._create_token(
+            data={"sub": user_id},
+            expires_delta=timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-        return encoded_jwt
+
+        refresh_token = await self._create_token(
+            data={"sub": user_id},
+            expires_delta=timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+
+        await redis_client.setex(
+            name=refresh_token,
+            time=timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS),
+            value=user_id
+        )
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
+    
+    async def _create_token(self, data: dict, expires_delta: timedelta) -> str:
+        expire = datetime.now() + expires_delta
+        data.update({"exp": expire})
+        return jwt.encode(data, self.SECRET_KEY, algorithm=self.ALGORITHM)
+
 
     async def decode_token(self, token: str) -> str:
         try:
@@ -31,29 +53,17 @@ class JwtAuth:
         except jwt.InvalidTokenError:
             raise Exception("Invalid token")
         return data.get("sub")
+    
 
-
-"""def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
-    try:
-        payload = JwtAuth.decode_token(token)
-        user_id = payload.get("sub")
-        exp_time = payload.get("exp")
-        if user_id is None:
+    async def new_access_token(self, refresh_token: str) -> str:
+        user_id = await redis_client.get(refresh_token)
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="не могу валидировать токен",
+                detail="Invalid or revoked refresh token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if exp_time > datetime.now():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Токен невалидный",
-                headers={"WWW-Authenticate": "Bearer"},
+        return await self._create_token(
+            data={"sub": user_id},
+            expires_delta=timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
             )
-        return user_id
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
-        )"""

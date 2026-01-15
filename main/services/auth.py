@@ -7,7 +7,7 @@ from main.repositories.auth import AuthRegUserRepository
 from main.services.jwt import JwtAuth
 from main.services.utils import Utils
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from main.schemas.auth import RegistrationIn
 from dataclasses import dataclass
 
@@ -21,7 +21,7 @@ class AuthRegUserServices:
 
     async def registration_services(self, data: RegistrationIn) -> str:
         if await self._check_email(email=data.email):
-            raise HTTPException(status_code=404, detail="Email занят")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND , detail="Email занят")
         data.password = await utils.get_password_hash(password=data.password)
         return await self._write_user(data=data)
 
@@ -30,3 +30,7 @@ class AuthRegUserServices:
 
     async def _write_user(self, data) -> str:
         return await self.repository.create_user(data=data)
+    
+    async def update_token(self, data) -> str:
+        return await self.jwt_token.new_access_token(data=data)
+
