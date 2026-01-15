@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.db.models.users import User
@@ -14,9 +13,14 @@ class AuthRegUserRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_user(self, data) -> UUID:
+    async def create_user(self, data) -> str:
         stmt = User(**data.model_dump())
         self.db.add(stmt)
         await self.db.commit()
         await self.db.refresh(stmt)
-        return stmt.user_id
+        return stmt.email
+
+    async def get_user(self, data) -> User | None:
+        stmt = select(User).where(User.email == data.email, User.is_deleted == False)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
