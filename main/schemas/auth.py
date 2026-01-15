@@ -1,3 +1,4 @@
+from uuid import UUID
 from pydantic import BaseModel, EmailStr
 
 
@@ -10,6 +11,7 @@ class RegistrationIn(BaseModel):
 
 
 class RegistrationOut(BaseModel):
+<<<<<<< HEAD
     email: str
 
 
@@ -18,3 +20,20 @@ class GetToken(BaseModel):
 
 class OutToken(BaseModel):
     refresh_token: str
+=======
+    email: EmailStr
+
+
+class LogIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    user_id: UUID
+>>>>>>> main
