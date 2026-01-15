@@ -10,4 +10,4 @@ class RegistrationIn(BaseModel):
 
 
 class RegistrationOut(BaseModel):
-    token: str
+    email: str
