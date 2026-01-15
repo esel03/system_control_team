@@ -14,9 +14,9 @@ class AuthRegUserRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_user(self, data) -> UUID:
+    async def create_user(self, data) -> str:
         stmt = User(**data.model_dump())
         self.db.add(stmt)
         await self.db.commit()
         await self.db.refresh(stmt)
-        return stmt.user_id
+        return stmt.email
