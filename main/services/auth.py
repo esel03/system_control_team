@@ -36,18 +36,17 @@ class AuthRegUserServices:
     async def _write_user(self, data) -> str:
         return await self.repository.create_user(data=data)
     
-    async def update_token(self, data) -> str:
-        return await self.jwt_token.new_access_token(data=data)
+    async def update_token(self, data: dict) -> str:
+        return await jwt_token.new_access_token(refresh_token=data.get('refresh_token'))
 
 
-    async def _login_service(self, data: LogIn) -> Token:
+    async def login_service(self, data: LogIn) -> Token:
         user = await self.repository.get_user(data=data)
         if not user:
             raise HTTPException(status_code=401, detail="пользователь не существует")
         if not await utils.verify_password(data.password, user.password):
             raise HTTPException(status_code=401, detail="неверные данные для входа")
-        token = await jwt_token.create_access_token(user.user_id)
-        return Token(access_token=token, token_type="bearer")
+        return (await jwt_token.create_access_token(str(user.user_id))) # костыль
 
     async def _get_current_user(
         self, token: Annotated[str, Depends(oauth2_scheme)]

@@ -11,14 +11,14 @@ class RegistrationIn(BaseModel):
 
 
 class RegistrationOut(BaseModel):
-    email: str
+    email: EmailStr
 
 
 class GetToken(BaseModel):
     refresh_token: str
 
 class OutToken(BaseModel):
-    refresh_token: str
+    access_token: str
 
 
 class LogIn(BaseModel):
@@ -28,6 +28,7 @@ class LogIn(BaseModel):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
