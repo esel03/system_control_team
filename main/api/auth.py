@@ -4,6 +4,7 @@ from main.db.connect import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.services.auth import AuthRegUserServices
 from main.repositories.auth import AuthRegUserRepository
+from main.schemas.auth import RegistrationIn, RegistrationOut, GetToken, OutToken
 from main.schemas.auth import LogIn, RegistrationIn, RegistrationOut, Token
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -23,7 +24,13 @@ def get_auth_service(
 async def registration_users(
     data: RegistrationIn, service: AuthRegUserServices = Depends(get_auth_service)
 ) -> dict[str, str]:
-    return {"email": f"{await service.registration_services(data=data)}"}
+    return RegistrationOut(email=await service.registration_services(data=data))
+
+
+@router.post("/update_acces_token", summary="Получение токена", response_model=OutToken)
+async def get_token(data: GetToken, service: AuthRegUserServices = Depends(get_auth_service)
+) -> OutToken:
+    return OutToken(access_token=await service.update_token(data=data.model_dump()))
 
 
 @router.post("/login", summary="авторизация пользователя", response_model=Token)
@@ -32,4 +39,4 @@ async def login_user(
     service: AuthRegUserServices = Depends(get_auth_service),
 ) -> Token:
     login_data = LogIn(email=data.username, password=data.password)
-    return await service._login_service(login_data)
+    return (await service.login_service(login_data))
