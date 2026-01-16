@@ -19,9 +19,9 @@ class JwtAuth:
     REFRESH_TOKEN_EXPIRE_DAYS = 1
     SECRET_KEY = settings.SECRET_KEY
 
-    async def create_access_token(self, user_id: str) -> str:
+    async def create_access_token(self, user_id: UUID) -> str:
         access_token = await self._create_token(
-            data={"sub": user_id},
+            data={"sub": str(user_id)},
             expires_delta=timedelta(minutes=self.ACCESS_TOKEN_EXP_MINUTES)
         )
 
