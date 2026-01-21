@@ -19,34 +19,14 @@ class JwtAuth:
     REFRESH_TOKEN_EXPIRE_DAYS = 1
     SECRET_KEY = settings.SECRET_KEY
 
-    async def create_access_token(self, user_id: str) -> str:
-        access_token = await self._create_token(
-            data={"sub": user_id},
-            expires_delta=timedelta(minutes=self.ACCESS_TOKEN_EXP_MINUTES)
+    async def create_access_token(self, user_id: UUID) -> str:
+        data_to_encode = {"sub": str(user_id)}
+        exp_time = datetime.now() + timedelta(minutes=self.ACCESS_TOKEN_EXP_MINUTES)
+        data_to_encode.update({"exp": exp_time})
+        encoded_jwt = jwt.encode(
+            data_to_encode, self.SECRET_KEY, algorithm=self.ALGORITHM
         )
-
-        refresh_token = await self._create_token(
-            data={"sub": user_id},
-            expires_delta=timedelta(minutes=self.REFRESH_TOKEN_EXPIRE_DAYS) #days
-        )
-
-        await redis_client.setex(
-            name=refresh_token,
-            time=timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS),
-            value=user_id
-        )
-
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer"
-        }
-    
-    async def _create_token(self, data: dict, expires_delta: timedelta) -> str:
-        expire = datetime.now() + expires_delta
-        data.update({"exp": expire})
-        return jwt.encode(data, self.SECRET_KEY, algorithm=self.ALGORITHM)
-
+        return encoded_jwt
 
     async def decode_token(self, token: str) -> dict:
         try:

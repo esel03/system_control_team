@@ -46,7 +46,7 @@ class AuthRegUserServices:
             raise HTTPException(status_code=401, detail="пользователь не существует")
         if not await utils.verify_password(data.password, user.password):
             raise HTTPException(status_code=401, detail="неверные данные для входа")
-        return (await jwt_token.create_access_token(str(user.user_id))) # костыль
+        return (await jwt_token.create_access_token(user.user_id)) # костыль
 
     async def _get_current_user(
         self, token: Annotated[str, Depends(oauth2_scheme)]
