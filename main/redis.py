@@ -3,7 +3,5 @@ import redis.asyncio as redis
 from main.config import settings
 
 redis_client = redis.from_url(
-    settings.REDIS_URL,  
-    decode_responses=True,  
-    encoding="utf-8"
+    settings.REDIS_URL, decode_responses=True, encoding="utf-8"
 )

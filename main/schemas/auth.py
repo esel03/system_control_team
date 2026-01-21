@@ -17,6 +17,7 @@ class RegistrationOut(BaseModel):
 class GetToken(BaseModel):
     refresh_token: str
 
+
 class OutToken(BaseModel):
     access_token: str
 
@@ -34,3 +35,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: UUID
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str

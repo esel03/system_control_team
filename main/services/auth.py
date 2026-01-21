@@ -10,8 +10,8 @@ from main.services.utils import Utils
 
 from fastapi import HTTPException, status
 from main.schemas.auth import RegistrationIn
-from fastapi import Depends, HTTPException, status
-from main.schemas.auth import RegistrationIn, LogIn, Token, TokenData
+from fastapi import Depends
+from main.schemas.auth import LogIn, Token, TokenData
 from dataclasses import dataclass
 from fastapi.security import OAuth2PasswordBearer
 
@@ -26,7 +26,9 @@ class AuthRegUserServices:
 
     async def registration_services(self, data: RegistrationIn) -> str:
         if await self._check_email(email=data.email):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND , detail="Email занят")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Email занят"
+            )
         data.password = await utils.get_password_hash(password=data.password)
         return await self._write_user(data=data)
 
@@ -35,10 +37,9 @@ class AuthRegUserServices:
 
     async def _write_user(self, data) -> str:
         return await self.repository.create_user(data=data)
-    
-    async def update_token(self, data: dict) -> str:
-        return await jwt_token.new_access_token(refresh_token=data.get('refresh_token'))
 
+    async def update_token(self, data: dict) -> str:
+        return await jwt_token.new_access_token(refresh_token=data.get("refresh_token"))
 
     async def login_service(self, data: LogIn) -> Token:
         user = await self.repository.get_user(data=data)
@@ -46,7 +47,7 @@ class AuthRegUserServices:
             raise HTTPException(status_code=401, detail="пользователь не существует")
         if not await utils.verify_password(data.password, user.password):
             raise HTTPException(status_code=401, detail="неверные данные для входа")
-        return (await jwt_token.create_access_token(str(user.user_id))) # костыль
+        return await jwt_token.create_access_token(str(user.user_id))  # костыль
 
     async def _get_current_user(
         self, token: Annotated[str, Depends(oauth2_scheme)]
@@ -67,3 +68,6 @@ class AuthRegUserServices:
                 detail=str(e),
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+    async def logout_service(self, refresh_token: str) -> dict[str, str]:
+        return await jwt_token.delete_refresh_token(refresh_token)
