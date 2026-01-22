@@ -46,11 +46,11 @@ class JwtAuth:
         data.update({"exp": expire})
         return jwt.encode(data, self.SECRET_KEY, algorithm=self.ALGORITHM)
 
-    async def decode_token(self, token: str) -> dict:
+    async def decode_token(self, token: str) -> str:
         try:
             data = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
         except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=401, detail="Token expired")
+            raise Exception("Token expired")
         except jwt.InvalidTokenError:
             raise Exception("Invalid token")
         return data.get("sub")

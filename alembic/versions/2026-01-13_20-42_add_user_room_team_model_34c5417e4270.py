@@ -43,6 +43,7 @@ def upgrade() -> None:
     sa.Column('team_id', sa.Uuid(), nullable=False, comment='гуид команды'),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('room_id', sa.Uuid(), nullable=False),
+    sa.Column('name', sa.String(length=50), nullable=False, comment='название команды'),
     sa.Column('role', sa.String(length=100), nullable=False, comment='роль в команде'),
     sa.Column('tag', sa.String(length=100), nullable=False, comment='направление деятельности в команде'),
     sa.Column('is_chief', sa.Boolean(), nullable=False, comment='является ли лидером команды'),

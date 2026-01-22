@@ -34,7 +34,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    user_id: UUID
+    user_id: str
 
 
 class LogoutRequest(BaseModel):
