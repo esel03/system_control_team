@@ -49,19 +49,16 @@ class AuthRegUserServices:
             raise HTTPException(status_code=401, detail="неверные данные для входа")
         return await jwt_token.create_access_token(str(user.user_id))  # костыль
 
-    async def _get_current_user(
-        self, token: Annotated[str, Depends(oauth2_scheme)]
-    ) -> TokenData:
+    async def get_current_user(self, token: str) -> TokenData:
         try:
-            payload = await jwt_token.decode_token(token)
-            user_id = payload.get("sub")
+            user_id = await jwt_token.decode_token(token)
             if user_id is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="не могу валидировать токен",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            return TokenData(user_id=UUID(user_id))
+            return TokenData(user_id=user_id)
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
