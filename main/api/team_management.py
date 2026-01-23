@@ -10,7 +10,9 @@ from main.schemas.team_management import (
     CreateRoomIn,
     RoomOut,
     AddToRoomIn,
-    CreateTeamIn
+    CreateTeamIn,
+    TeamOut,
+    AddToTeamIn,
 )
 
 router = APIRouter(prefix="/team", tags=["team"])
@@ -29,8 +31,8 @@ async def create_room(token: str,
     data: CreateRoomIn, service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> RoomOut:
-    result = await service_auth.get_current_user(token=token)
-    return RoomOut(room_id=await service.create_room(user_id=result.user_id, data=data))
+    await service_auth.get_current_user(token=token)
+    return RoomOut(room_id=await service.create_room(data=data))
 
 
 
@@ -53,14 +55,22 @@ async def delete_people_to_room(token: str,
     return RoomOut(room_id=await service.delete_people_to_room(room_id=data.room_id, data=data))
 
 
-
-
 # TODO: юзер создающий команду должен быть в data: CreateTeamIn, 
 # с определением role и tag, и статусом is_сhief
-@router.post("/create_team", summary="Создание комнаты", response_model=list)
+@router.post("/create_team", summary="Создание команды", response_model=TeamOut)
 async def create_team(token: str,
     data: CreateTeamIn, service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> RoomOut:
+) -> TeamOut:
     await service_auth.get_current_user(token=token)
-    return await service.create_team(data=data)
+    return TeamOut(team_id=await service.create_team(data=data))
+
+
+@router.post("/add_people_to_team", summary="Добавление участника/ов в команду", response_model=TeamOut)
+async def add_people_to_team(token: str,
+    data: AddToTeamIn, service: RoomTeamServices = Depends(get_team_service),
+    service_auth: AuthRegUserServices = Depends(get_auth_service),
+) -> TeamOut:
+    await service_auth.get_current_user(token=token)
+    return TeamOut(team_id=await service.add_people_to_team(data=data))
+
