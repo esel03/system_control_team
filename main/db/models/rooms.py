@@ -7,7 +7,7 @@ import uuid
 
 class Room(Base):
     __tablename__ = "rooms"
-    
+
     room_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, default=uuid.uuid4, comment="гуид комнаты"
     )

@@ -3,6 +3,7 @@ from sqlalchemy import Uuid, ForeignKey
 import uuid
 from main.db.base import Base
 
+
 class TeamToRoom(Base):
     __tablename__ = "teams_to_rooms"
 

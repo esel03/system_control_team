@@ -10,7 +10,9 @@ class Team(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, default=uuid.uuid4, comment="гуид"
     )
-    team_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("teams_to_rooms.team_id"))
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("teams_to_rooms.team_id")
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.user_id"))
     room_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("rooms.room_id"))
     name: Mapped[str] = mapped_column(

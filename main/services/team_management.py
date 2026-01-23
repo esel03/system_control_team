@@ -1,11 +1,9 @@
-from typing import Annotated
 from uuid import UUID
 from main.repositories.team_management import RoomTeamRepository
 
 from fastapi import HTTPException, status, Depends
 from main.schemas.team_management import CreateRoomIn, AddToRoomIn, CreateTeamIn, AddToTeamIn
 from dataclasses import dataclass
-
 
 
 @dataclass
@@ -55,9 +53,11 @@ class RoomTeamServices:
     async def delete_people_to_room(self, room_id: UUID, data: AddToRoomIn) -> str:
         if not (await self.repository.check_room(room_id=room_id)):
             return HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
-                )
-        if (result := await self.repository.delete_people_to_room(room_id=room_id, data=data.list_users)):
+                status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
+            )
+        if result := await self.repository.delete_people_to_room(
+            room_id=room_id, data=data.list_users
+        ):
             return result
 
 

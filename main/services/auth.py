@@ -2,15 +2,12 @@
 Процедура регистрации и осуществления подтверждения почты
 """
 
-from typing import Annotated
-from uuid import UUID
 from main.repositories.auth import AuthRegUserRepository
 from main.services.jwt import JwtAuth
 from main.services.utils import Utils
 
 from fastapi import HTTPException, status
 from main.schemas.auth import RegistrationIn
-from fastapi import Depends
 from main.schemas.auth import LogIn, Token, TokenData
 from dataclasses import dataclass
 from fastapi.security import OAuth2PasswordBearer

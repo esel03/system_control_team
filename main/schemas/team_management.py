@@ -1,5 +1,5 @@
 from uuid import UUID
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class UsersList(BaseModel):
@@ -7,6 +7,7 @@ class UsersList(BaseModel):
     role: str | None = None
     tag: str | None = None
     is_chief: bool = False
+
 
 class CreateRoomIn(BaseModel):
     name: str

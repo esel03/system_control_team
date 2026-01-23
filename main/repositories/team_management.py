@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from uuid import UUID
 from sqlalchemy import select, insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from main.db.models.teams import Team 
-from main.db.models.rooms import Room 
+from main.db.models.teams import Team
+from main.db.models.rooms import Room
 from main.db.models.users_to_rooms import UsersToRooms
 from main.db.models.teams_to_rooms import TeamToRoom
 from main.schemas.team_management import CreateRoomIn, AddToRoomIn, UsersList, CreateTeamIn, AddToTeamIn
@@ -50,13 +50,9 @@ class RoomTeamRepository:
     # удаляет участников из комнаты
     async def delete_people_to_room(self, room_id: str, data: list[UsersList]):
         list_users = [uid.user_id for uid in data]
-        stmt = (
-            delete(UsersToRooms)
-            .where(
-            UsersToRooms.room_id == room_id,
-            UsersToRooms.user_id.in_(list_users)
-            )
-        )   
+        stmt = delete(UsersToRooms).where(
+            UsersToRooms.room_id == room_id, UsersToRooms.user_id.in_(list_users)
+        )
 
         await self.db.execute(stmt)
         await self.db.commit()

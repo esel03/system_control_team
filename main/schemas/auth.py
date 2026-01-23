@@ -1,4 +1,4 @@
-from uuid import UUID
+import uuid
 from pydantic import BaseModel, EmailStr
 
 
@@ -34,7 +34,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    user_id: str
+    user_id: uuid.UUID
 
 
 class LogoutRequest(BaseModel):
