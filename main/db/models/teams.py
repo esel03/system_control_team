@@ -12,6 +12,9 @@ class Team(Base):
     )
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.user_id"))
     room_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("rooms.room_id"))
+    name: Mapped[str] = mapped_column(
+        String(50), nullable=False, comment="название команды"
+    )
     role: Mapped[str] = mapped_column(String(100), comment="роль в команде")
     tag: Mapped[str] = mapped_column(
         String(100), comment="направление деятельности в команде"
