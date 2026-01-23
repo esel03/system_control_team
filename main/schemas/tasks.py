@@ -10,12 +10,10 @@ class TaskCreate(BaseModel):
     task_text: str
     author: uuid.UUID
     executor: Optional[uuid.UUID] = None
-    task_update_author: Optional[uuid.UUID] = None
-    last_executor: Optional[uuid.UUID] = None
     priority: str
     status: str
     difficulty: str
-    task_create_date: datetime
+    task_create_date: Optional[datetime] = None
     task_update_date: Optional[datetime] = None
     task_deadline_date: Optional[datetime] = None
 

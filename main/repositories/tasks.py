@@ -4,6 +4,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.db.models.tasks import Task
 from main.schemas.tasks import TaskCreate, TaskUpdate
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -22,43 +23,40 @@ class TaskRepository:
         """
         функция для создания задачи, возвращает id созданной задачи
         """
-        stmt = Task(**data.model_dump())
+        stmt = Task(
+            **data.model_dump(),
+            task_create_date=datetime.now(timezone.utc),
+            task_update_date=None
+        )
         self.db.add(stmt)
         await self.db.commit()
         await self.db.refresh(stmt)
         return stmt.task_id
 
-    async def update_task(self, task_id: uuid.UUID, data: TaskUpdate) -> uuid.UUID:
+    async def update_task(
+        self, task_id: uuid.UUID, data: TaskUpdate
+    ) -> uuid.UUID | None:
         """
-        функция для обновления задачи по id и возвращает id обновленной задачи
+        функция обновления задачи по ID.
         """
-        updated_data = data.model_dump(exclude_unset=True)
-        if not updated_data:
-            return task_id
-        stmt = (
-            update(Task)
-            .where(Task.task_id == task_id)
-            .values(**updated_data)
-            .execution_options(synchronize_session=False)
-        )
-        await self.db.execute(stmt)
+        update_data = data.model_dump(exclude_unset=True)
+        if not update_data:
+            update_data = {}
+        update_data["task_update_date"] = datetime.now(timezone.utc)
+        stmt = update(Task).where(Task.task_id == task_id).values(**update_data)
+        result = await self.db.execute(stmt)
+        if result.rowcount == 0:
+            return None
         await self.db.commit()
         return task_id
-    
-    from sqlalchemy import delete
 
-async def delete_task(self, task_id: uuid.UUID) -> bool:
-    """
-    функция для удаления задачи по id
-    """
-    stmt = (
-        delete(Task)
-        .where(Task.task_id == task_id)
-        .execution_options(synchronize_session=False)
-    )
-    result = await self.db.execute(stmt)
-    await self.db.commit()
-    if result.rowcount > 0:
-        return True
-    return False
-
+    async def delete_task(self, task_id: uuid.UUID) -> bool:
+        """
+        функция для удаления задачи по id
+        """
+        stmt = delete(Task).where(Task.task_id == task_id)
+        result = await self.db.execute(stmt)
+        await self.db.commit()
+        if result.rowcount > 0:
+            return True
+        return False
