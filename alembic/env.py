@@ -11,6 +11,7 @@ from main.db.models.rooms import Room
 from main.db.models.teams import Team
 from main.db.models.tasks import Task
 from main.db.models.users_to_rooms import UsersToRooms
+from main.db.models.teams_to_rooms import TeamToRoom
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
