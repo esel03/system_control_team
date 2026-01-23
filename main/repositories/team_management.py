@@ -24,7 +24,7 @@ class RoomTeamRepository:
     
         
     # отдает список пользователей комнаты
-    async def _get_list_users_to_rooms(self, room_id: UUID) -> set:
+    async def _get_list_users_to_rooms(self, room_id: UUID) -> set[UUID]:
         stmt = (select(UsersToRooms.user_id)
                 .where(Room.room_id == room_id))
         list_users_to_rooms = await self.db.execute(stmt)
@@ -42,7 +42,7 @@ class RoomTeamRepository:
         return room_id
     
     # проверяет существование комнаты
-    async def check_room(self, room_id):
+    async def check_room(self, room_id: UUID):
         stmt = select(Room).where(Room.room_id == room_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
