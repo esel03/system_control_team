@@ -1,4 +1,4 @@
-from sqlalchemy import Uuid, String, Boolean, ForeignKey
+from sqlalchemy import Uuid, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 from main.db.base import Base
@@ -25,3 +25,8 @@ class Team(Base):
     is_chief: Mapped[bool] = mapped_column(
         Boolean, default=False, comment="является ли лидером команды"
     )
+
+    __table_args__ = (
+        UniqueConstraint("team_id", "user_id", "room_id", name="uix_team_user_room"),
+    )
+
