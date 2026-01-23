@@ -15,9 +15,7 @@ class TaskService:
     async def update_task(self, task_id: UUID, data: TaskUpdate) -> UUID | None:
         result = await self.repository.update_task(task_id, data)
         if result is None:
-            raise HTTPException(
-                status_code=404, detail="Задача не найдена"
-            )
+            raise HTTPException(status_code=404, detail="Задача не найдена")
         return result
 
     async def delete_task(self, task_id: UUID) -> bool:

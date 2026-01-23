@@ -36,7 +36,10 @@ class Task(Base):
         Uuid, primary_key=True, default=uuid.uuid4, comment="гуид задачи"
     )
     team_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("teams_to_rooms.team_id"), nullable=False, comment="гуид команды"
+        Uuid,
+        ForeignKey("teams_to_rooms.team_id"),
+        nullable=False,
+        comment="гуид команды",
     )
     task_name: Mapped[str] = mapped_column(
         String, nullable=False, comment="название задачи"
