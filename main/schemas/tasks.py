@@ -16,10 +16,7 @@ class TaskCreate(BaseModel):
     task_create_date: Optional[datetime] = None
     task_update_date: Optional[datetime] = None
     task_deadline_date: Optional[datetime] = None
-
-
-class Task(TaskCreate):
-    task_id: uuid.UUID
+    task_finish_date: Optional[datetime] = None
 
 
 class TaskUpdate(BaseModel):
@@ -32,3 +29,8 @@ class TaskUpdate(BaseModel):
     difficulty: Optional[str] = None
     task_update_date: Optional[datetime] = None
     task_deadline_date: Optional[datetime] = None
+    task_finish_date: Optional[datetime] = None
+
+
+class TaskOut(BaseModel):
+    task_id: uuid.UUID
