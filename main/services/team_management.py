@@ -12,7 +12,7 @@ from dataclasses import dataclass
 class RoomTeamServices:
     repository: RoomTeamRepository
 
-    async def create_room(self, user_id: str, data: CreateRoomIn) -> str:
+    async def create_room(self, user_id: str, data: CreateRoomIn) -> str | HTTPException:
         if (result := await self.repository.create_room(user_id=user_id, data=data)):
             return result
         else:
@@ -20,7 +20,7 @@ class RoomTeamServices:
                     status_code=status.HTTP_404_NOT_FOUND, detail="Комната не создалась"
                 )
         
-    async def add_people_to_room(self, room_id: UUID, data: AddToRoomIn) -> str:
+    async def add_people_to_room(self, room_id: UUID, data: AddToRoomIn) -> str | HTTPException:
         if not (await self.repository.check_room(room_id=room_id)):
             return HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
@@ -33,7 +33,7 @@ class RoomTeamServices:
                 )
         
 # TODO: добавить удаление участника/ов и из команд лежащих в комнате
-    async def delete_people_to_room(self, room_id: UUID, data: AddToRoomIn) -> str:
+    async def delete_people_to_room(self, room_id: UUID, data: AddToRoomIn) -> str | HTTPException:
         if not (await self.repository.check_room(room_id=room_id)):
             return HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
