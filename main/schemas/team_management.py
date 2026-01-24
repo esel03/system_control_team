@@ -21,13 +21,21 @@ class CreateTeamIn(BaseModel):
     room_id: UUID
     list_users: list[UsersList]
 
+class DeleteTeamPeople(BaseModel):
+    team_id: UUID
+    list_users: list[UUID]
+
+class DeleteRoomPeople(BaseModel):
+    room_id: UUID
+    list_users: list[UUID]
+
 class AddToTeamIn(BaseModel):
     name: str
     team_id: UUID
     list_users: list[UsersList]
 
 class RoomOut(BaseModel):
-    room_id: UUID
+    list_room_id: list
 
 
 class AddToRoomIn(BaseModel):

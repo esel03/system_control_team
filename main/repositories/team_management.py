@@ -47,14 +47,20 @@ class RoomTeamRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    # удаляет участников из комнаты
-    async def delete_people_to_room(self, room_id: str, data: list[UsersList]):
-        list_users = [uid.user_id for uid in data]
-        stmt = delete(UsersToRooms).where(
-            UsersToRooms.room_id == room_id, UsersToRooms.user_id.in_(list_users)
+    # удаляет участников из комнаты, соответсвенно из команд, в этой комнате
+    async def delete_people_to_room(self, room_id: UUID, data: list[UUID]):
+        await self.db.execute(
+            delete(Team)
+            .where(Team.room_id == room_id)
+            .where(Team.user_id.in_(data))
         )
 
-        await self.db.execute(stmt)
+        await self.db.execute(
+            delete(UsersToRooms)
+            .where(UsersToRooms.room_id == room_id)
+            .where(UsersToRooms.user_id.in_(data))
+        )
+        
         await self.db.commit()
         return room_id
     
@@ -90,7 +96,23 @@ class RoomTeamRepository:
                 .where(TeamToRoom.team_id == team_id))
         room_id = await self.db.execute(stmt)
         return room_id.scalar_one_or_none()
+    
+
+    # удаляет участников из команды
+    async def delete_people_of_team(self, team_id: UUID, data: list[UUID]):
+        stmt = (delete(Team)
+                .where(Team.team_id == team_id)
+                .where(Team.user_id.in_(data)))
+        await self.db.execute(stmt)
+        await self.db.commit()
+        return team_id
+
+    async def get_list_rooms(self, user_id: UUID):
+        stmt = (select(UsersToRooms.room_id)
+                .where(UsersToRooms.user_id == user_id))
+        return (await self.db.execute(stmt)).scalars().all()
         
-          
+
+
 
         
