@@ -27,8 +27,7 @@ async def create_task(
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TaskOut:
     token_data = await service_auth.get_current_user(token=token)
-    data.author = token_data.user_id
-    task_id = await service.create_task(data=data)
+    task_id = await service.create_task(data, author_id=token_data.user_id)
     return TaskOut(task_id=task_id)
 
 

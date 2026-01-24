@@ -12,38 +12,50 @@ class RoomTeamServices:
 
     # создание комнаты
     async def create_room(self, data: CreateRoomIn) -> str:
-        if (result := await self.repository.create_room(data=data)):
+        if result := await self.repository.create_room(data=data):
             values = []
             for user in data.list_users:
                 values.append(user.user_id)
-            return await self.repository._write_users_to_rooms(data=values, room_id=result)
+            return await self.repository._write_users_to_rooms(
+                data=values, room_id=result
+            )
         else:
             return HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Комната не создалась"
-                )
+                status_code=status.HTTP_404_NOT_FOUND, detail="Комната не создалась"
+            )
 
     # добавление участников в комнату
     async def add_people_to_room(self, room_id: UUID, data: AddToRoomIn) -> UUID | None:
         if not (await self.repository.check_room(room_id=room_id)):
             return HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
-                )
-        if (list_users_to_add := await self._matched_users(room_id=room_id, list_users=data.list_users)):
-            if (result := await self.repository._write_users_to_rooms(room_id=room_id, data=list_users_to_add)):
+                status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
+            )
+        if list_users_to_add := await self._matched_users(
+            room_id=room_id, list_users=data.list_users
+        ):
+            if result := await self.repository._write_users_to_rooms(
+                room_id=room_id, data=list_users_to_add
+            ):
                 return result
             else:
                 return HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND, detail="Пользователи не добавились в комнату"
-                    )
-        return None         
-             
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Пользователи не добавились в комнату",
+                )
+        return None
+
     # сравнение списков пользователей и комнаты
-    async def _matched_users(self, room_id: UUID, list_users: list) -> list[UUID] | None:
+    async def _matched_users(
+        self, room_id: UUID, list_users: list
+    ) -> list[UUID] | None:
         values = set()
         for user in list_users:
             values.add(user.user_id)
-        
-        if not (result_set := values - set(await self.repository._get_list_users_to_rooms(room_id=room_id))):
+
+        if not (
+            result_set := values
+            - set(await self.repository._get_list_users_to_rooms(room_id=room_id))
+        ):
             return None
         return list(result_set)
         
@@ -61,24 +73,24 @@ class RoomTeamServices:
         ):
             return result
 
-
     # создание команды
     async def create_team(self, data: CreateTeamIn):
         await self.add_people_to_room(room_id=data.room_id, data=data)
         
         if not (result := await self.repository.create_team(data=data)):
             return HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Команда не создана"
-                )
-        return await self.repository._write_users_to_teams(team_id=result, room_id=data.room_id, name=data.name, data=data.list_users)
-    
+                status_code=status.HTTP_404_NOT_FOUND, detail="Команда не создана"
+            )
+        return await self.repository._write_users_to_teams(
+            team_id=result, room_id=data.room_id, name=data.name, data=data.list_users
+        )
 
     # добавление участников в команду
     async def add_people_to_team(self, data: AddToTeamIn) -> UUID:
         if not (result := await self.repository.get_room_on_team(team_id=data.team_id)):
             return HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Команда не найдена"
-                )
+                status_code=status.HTTP_404_NOT_FOUND, detail="Команда не найдена"
+            )
         await self.add_people_to_room(room_id=result, data=data)
         return await self.repository._write_users_to_teams(team_id=data.team_id, room_id=result, name=data.name, data=data.list_users)
 

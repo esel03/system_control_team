@@ -1,4 +1,4 @@
-from sqlalchemy import Uuid, String, ForeignKey, DateTime, func
+from sqlalchemy import TIMESTAMP, Uuid, String, ForeignKey, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Enum as SAEnum
 import uuid
@@ -51,7 +51,7 @@ class Task(Base):
         Uuid, ForeignKey("users.user_id"), nullable=False, comment="Автор задачи"
     )
     executor: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.user_id"), nullable=False, comment="исполнитель задачи"
+        Uuid, ForeignKey("users.user_id"), nullable=True, comment="исполнитель задачи"
     )
     task_update_author: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -75,17 +75,17 @@ class Task(Base):
         SAEnum(Difficulty, byvalue=True), nullable=False, comment="сложность задачи"
     )
     task_create_date: Mapped[datetime] = mapped_column(
-        DateTime,
+        TIMESTAMP(timezone=True),
         nullable=False,
         server_default=func.now(),
         comment="дата создания задачи",
     )
     task_update_date: Mapped[datetime] = mapped_column(
-        DateTime, nullable=True, comment="текст обнолвения задачи"
+        TIMESTAMP(timezone=True), nullable=True, comment="текст обнолвения задачи"
     )
     task_deadline_date: Mapped[datetime] = mapped_column(
-        DateTime, comment="дедлайн задачи"
+        TIMESTAMP(timezone=True), comment="дедлайн задачи"
     )
     task_finish_date: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, comment="дата завершения задачи"
+        TIMESTAMP(timezone=True), nullable=True, comment="дата завершения задачи"
     )

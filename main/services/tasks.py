@@ -10,8 +10,8 @@ from main.schemas.tasks import TaskCreate, TaskUpdate
 class TaskServices:
     repository: TaskRepository
 
-    async def create_task(self, data: TaskCreate) -> UUID:
-        return await self.repository.create_task(data)
+    async def create_task(self, data: TaskCreate, author_id: uuid.UUID) -> UUID:
+        return await self.repository.create_task(data, author_id)
 
     async def update_task(self, task_id: UUID, user_id: uuid.UUID, data: TaskUpdate) -> UUID:
         result = await self.repository.update_task(task_id, user_id, data)

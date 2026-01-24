@@ -16,6 +16,8 @@ from main.schemas.team_management import (
     DeleteTeamPeople,
     DeleteRoomPeople,
 )
+from main.services.auth import oauth2_scheme
+
 
 router = APIRouter(prefix="/team", tags=["team"])
 
@@ -29,17 +31,9 @@ def get_team_service(
 
 @router.post("/create_room", summary="Создание комнаты", response_model=RoomOut)
 async def create_room(
-    data: CreateRoomIn, token: str = Depends(oauth2_scheme), service: RoomTeamServices = Depends(get_team_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> RoomOut:
-    await service_auth.get_current_user(token=token)
-    return RoomOut(room_id=await service.create_room(data=data))
-
-
-
-@router.post("/add_people_to_room", summary="Добавление участника/ов в комнату", response_model=RoomOut)
-async def add_people_to_room(
-    data: AddToRoomIn, token: str = Depends(oauth2_scheme), service: RoomTeamServices = Depends(get_team_service),
+    data: CreateRoomIn,
+    token: str = Depends(oauth2_scheme),
+    service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> RoomOut:
     await service_auth.get_current_user(token=token)
@@ -80,20 +74,28 @@ async def delete_people_to_room(
     )
 
 
-# TODO: юзер создающий команду должен быть в data: CreateTeamIn, 
+# TODO: юзер создающий команду должен быть в data: CreateTeamIn,
 # с определением role и tag, и статусом is_сhief
 @router.post("/create_team", summary="Создание команды", response_model=TeamOut)
 async def create_team(
-    data: CreateTeamIn, token: str = Depends(oauth2_scheme), service: RoomTeamServices = Depends(get_team_service),
+    data: CreateTeamIn,
+    token: str = Depends(oauth2_scheme),
+    service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TeamOut:
     await service_auth.get_current_user(token=token)
     return TeamOut(team_id=await service.create_team(data=data))
 
 
-@router.post("/add_people_to_team", summary="Добавление участника/ов в команду", response_model=TeamOut)
+@router.post(
+    "/add_people_to_team",
+    summary="Добавление участника/ов в команду",
+    response_model=TeamOut,
+)
 async def add_people_to_team(
-    data: AddToTeamIn, token: str = Depends(oauth2_scheme), service: RoomTeamServices = Depends(get_team_service),
+    data: AddToTeamIn,
+    token: str = Depends(oauth2_scheme),
+    service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TeamOut:
     await service_auth.get_current_user(token=token)
