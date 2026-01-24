@@ -30,7 +30,8 @@ class TaskRepository:
         """
         stmt = (
             select(Task)
-            .join(Team, Task.team_id == Team.team_id)
+            .join(TeamToRoom, Task.team_id == TeamToRoom.team_id)
+            .join(Team, TeamToRoom.team_id == Team.team_id)
             .where(Task.task_id == task_id)
             .where(
                 or_(
@@ -38,17 +39,19 @@ class TaskRepository:
                     and_(Team.user_id == user_id, Team.is_chief == True),
                 )
             )
+            .distinct(Task.task_id)
         )
 
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_task(self, data: TaskCreate) -> uuid.UUID:
+    async def create_task(self, data: TaskCreate, author_id: uuid.UUID) -> uuid.UUID:
         """
         функция для создания задачи, возвращает id созданной задачи
         """
         stmt = Task(
             **data.model_dump(),
+            author=author_id,
             task_create_date=datetime.now(timezone.utc),
             task_update_date=None
         )
@@ -69,7 +72,10 @@ class TaskRepository:
         update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             update_data = {}
+        if "executor" in update_data and update_data["executor"] != task.executor:
+            update_data["last_executor"] = task.executor
         update_data["task_update_date"] = datetime.now(timezone.utc)
+        update_data["task_update_author"] = user_id
         stmt = update(Task).where(Task.task_id == task_id).values(**update_data)
         result = await self.db.execute(stmt)
         if result.rowcount == 0:
