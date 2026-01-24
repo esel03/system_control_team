@@ -1,4 +1,4 @@
-from sqlalchemy import TIMESTAMP, Uuid, String, ForeignKey, DateTime, func
+from sqlalchemy import TIMESTAMP, Boolean, Uuid, String, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Enum as SAEnum
 import uuid
@@ -84,8 +84,11 @@ class Task(Base):
         TIMESTAMP(timezone=True), nullable=True, comment="текст обнолвения задачи"
     )
     task_deadline_date: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), comment="дедлайн задачи"
+        TIMESTAMP(timezone=True), nullable=True, comment="дедлайн задачи"
     )
     task_finish_date: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True, comment="дата завершения задачи"
+    )
+    is_completed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, comment="флаг завершенности задачи", default=False
     )
