@@ -13,6 +13,8 @@ from main.schemas.auth import (
 )
 from main.schemas.auth import LogIn, Token
 from fastapi.security import OAuth2PasswordRequestForm
+from main.services.auth import oauth2_scheme
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -52,6 +54,7 @@ async def login_user(
 @router.post("/logout", summary="выход пользователя")
 async def logout_user(
     data: LogoutRequest,
+    token: str = Depends(oauth2_scheme),
     service: AuthRegUserServices = Depends(get_auth_service),
 ):
     return await service.logout_service(data.refresh_token)
