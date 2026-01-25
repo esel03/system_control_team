@@ -20,8 +20,7 @@ class RoomTeamRepository:
         await self.db.commit()
         await self.db.refresh(stmt)
         return stmt.room_id
-    
-        
+
     # отдает список пользователей комнаты
     async def _get_list_users_to_rooms(self, room_id: UUID) -> set[UUID]:
         stmt = (select(UsersToRooms.user_id)
@@ -65,7 +64,6 @@ class RoomTeamRepository:
         
         await self.db.commit()
         return room_id
-    
 
     # создает команду
     async def create_team(self, room_id: UUID)-> UUID | None:
@@ -74,7 +72,7 @@ class RoomTeamRepository:
         await self.db.commit()
         await self.db.refresh(stmt)
         return stmt.team_id
-    
+
     # записывает/добавляет пользователей в команду
     async def _write_users_to_teams(self, team_id: UUID, room_id: UUID, name: str, data: list[UsersList]) -> UUID:
         stmt = (pg_insert(Team).values(
@@ -92,7 +90,6 @@ class RoomTeamRepository:
         await self.db.execute(stmt)
         await self.db.commit()
         return team_id
-    
 
     async def are_users_in_room(self, room_id: UUID, data: list[UUID]) -> NumUsId:
         """
@@ -115,8 +112,7 @@ class RoomTeamRepository:
 
     # отдает id комнаты по команде
     async def get_room_on_team(self, team_id: UUID) -> UUID | None:
-        stmt = (select(TeamToRoom.room_id)
-                .where(TeamToRoom.team_id == team_id))
+        stmt = select(TeamToRoom.room_id).where(TeamToRoom.team_id == team_id)
         room_id = await self.db.execute(stmt)
         return room_id.scalar_one_or_none()
     
@@ -185,4 +181,8 @@ class RoomTeamRepository:
 
 
 
-        
+    # проверяет существование пользователя в команде
+    async def check_user_in_team(self, team_id: UUID, user_id: UUID) -> bool:
+        stmt = select(Team).where(Team.team_id == team_id, Team.user_id == user_id)
+        result = await self.db.execute(stmt)
+        return result.scalar() is not None
