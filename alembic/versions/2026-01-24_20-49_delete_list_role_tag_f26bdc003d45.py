@@ -1,7 +1,7 @@
 """Delete list_role_tag
 
 Revision ID: f26bdc003d45
-Revises: f2052ef58031
+Revises: 833a49e5f6f1
 Create Date: 2026-01-24 17:49:48.825557
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'f26bdc003d45'
-down_revision: Union[str, Sequence[str], None] = 'f2052ef58031'
+down_revision: Union[str, Sequence[str], None] = '833a49e5f6f1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
