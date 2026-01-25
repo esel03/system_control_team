@@ -7,6 +7,7 @@ from main.db.models.teams import Team
 from main.db.models.teams_to_rooms import TeamToRoom
 from main.schemas.tasks import TaskCreate, TaskUpdate
 from datetime import datetime, timezone
+from typing import Sequence
 
 
 @dataclass
@@ -96,3 +97,50 @@ class TaskRepository:
         if result.rowcount > 0:
             return True
         return False
+
+    async def get_tasks_for_team(
+        self, team_id: uuid.UUID, start_date: datetime, end_date: datetime
+    ) -> Sequence[Task]:
+        stmt = (
+            select(Task)
+            .where(Task.team_id == team_id)
+            .where(
+                or_(
+                    Task.is_completed == False,
+                    and_(
+                        Task.is_completed == True,
+                        Task.task_finish_date >= start_date,
+                        Task.task_finish_date <= end_date,
+                    ),
+                )
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
+    async def get_tasks_for_user_in_team(
+        self,
+        user_id: uuid.UUID,
+        team_id: uuid.UUID,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> Sequence[Task]:
+        stmt = (
+            select(Task)
+            .join(Team, Task.team_id == Team.team_id)
+            .where(Task.team_id == team_id)
+            .where(Team.user_id == user_id)
+            .where(Task.executor == user_id)
+            .where(
+                or_(
+                    Task.is_completed == False,
+                    and_(
+                        Task.is_completed == True,
+                        Task.task_finish_date >= start_date,
+                        Task.task_finish_date <= end_date,
+                    ),
+                )
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
