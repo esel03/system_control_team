@@ -1,4 +1,4 @@
-eta:
+meta:
   environment: python
   toolchain:
     name: pip
