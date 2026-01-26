@@ -7,44 +7,21 @@ from main.db.models.teams import Team
 from main.db.models.rooms import Room
 from main.db.models.users_to_rooms import UsersToRooms
 from main.db.models.teams_to_rooms import TeamToRoom
-<<<<<<< HEAD
-from main.schemas.team_management import (
-    CreateRoomIn,
-    AddToRoomIn,
-    UsersList,
-    CreateTeamIn,
-    AddToTeamIn,
-)
-
-=======
 from main.schemas.team_management import CreateRoomIn, AddToRoomIn, UsersList, CreateTeamIn, AddToTeamIn, UserListRoom, NumUsId
->>>>>>> main
 
 @dataclass
 class RoomTeamRepository:
     db: AsyncSession
 
     # создает комнату и возвращает ее id
-<<<<<<< HEAD
-    async def create_room(self, data: dict) -> UUID | None:
-        stmt = Room(name=data.name, list_role=data.list_role, list_tag=data.list_tag)
-=======
     async def create_room(self, name: str) -> UUID | None:
         stmt = Room(name = name)
->>>>>>> main
         self.db.add(stmt)
         await self.db.commit()
         await self.db.refresh(stmt)
         return stmt.room_id
 
     # отдает список пользователей комнаты
-<<<<<<< HEAD
-    async def _get_list_users_to_rooms(self, room_id: UUID) -> set:
-        stmt = select(UsersToRooms.user_id).where(Room.room_id == room_id)
-        list_users_to_rooms = await self.db.execute(stmt)
-        result = list_users_to_rooms.scalars().all()
-        return set(result)
-=======
     async def _get_list_users_to_rooms(self, room_id: UUID) -> set[UUID]:
         stmt = (select(UsersToRooms.user_id)
                 .where(Room.room_id == room_id))
@@ -53,7 +30,6 @@ class RoomTeamRepository:
         return set(result)
     
             
->>>>>>> main
 
     # записывает пользователей в комнату
     async def _write_users_to_rooms(self, data: list[UserListRoom], room_id: UUID) -> UUID:
@@ -62,15 +38,10 @@ class RoomTeamRepository:
         )
         result = await self.db.execute(stmt)
         await self.db.commit()
-<<<<<<< HEAD
-        return room_id
-
-=======
         if result.rowcount > 0:
             return True
         return False
     
->>>>>>> main
     # проверяет существование комнаты
     async def check_room(self, room_id: UUID):
         stmt = select(Room).where(Room.room_id == room_id)
@@ -144,9 +115,6 @@ class RoomTeamRepository:
         stmt = select(TeamToRoom.room_id).where(TeamToRoom.team_id == team_id)
         room_id = await self.db.execute(stmt)
         return room_id.scalar_one_or_none()
-<<<<<<< HEAD
-
-=======
     
 
     # удаляет участников из команды
@@ -213,7 +181,6 @@ class RoomTeamRepository:
 
 
 
->>>>>>> main
     # проверяет существование пользователя в команде
     async def check_user_in_team(self, team_id: UUID, user_id: UUID) -> bool:
         stmt = select(Team).where(Team.team_id == team_id, Team.user_id == user_id)
