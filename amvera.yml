@@ -7,7 +7,6 @@ build:
   requirementsPath: requirements.txt
   useCache: true
 run:
-  prestart: alembic upgrade head
-  command: uvicorn main.main:app --host=0.0.0.0 --port=$PORT
+  command: ./start.sh
   persistenceMount: /data
   containerPort: "80"
