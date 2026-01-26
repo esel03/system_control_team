@@ -14,9 +14,4 @@ class Room(Base):
     name: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="название комнаты"
     )
-    list_role: Mapped[List[str]] = mapped_column(
-        JSON, comment="список ролей/должностей"
-    )
-    list_tag: Mapped[List[str]] = mapped_column(
-        JSON, comment="список направлений ответственности/сфер"
-    )
+    
