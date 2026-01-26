@@ -7,6 +7,13 @@ build:
   requirementsPath: requirements.txt
   useCache: true
 run:
-  command: uvicorn main.main:app --host=0.0.0.0 --port=80
+  command: |
+    #!/bin/bash
+    set -e  # останавливаемся при ошибке
+    echo "Применяем миграции Alembic..."
+    alembic upgrade head
+    echo "Миграции применены"
+    echo "Запуск приложения..."
+    uvicorn main.main:app --host=0.0.0.0 --port=80
   persistenceMount: /data
   containerPort: "80"
