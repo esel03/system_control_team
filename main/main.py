@@ -19,14 +19,17 @@ async def lifespan(app: FastAPI):
     print("Запуск приложения")
 
     os.environ["DATABASE_URL"] = settings.get_db_url()
+    PROJECT_ROOT = Path(__file__).parent.parent
+
+
     try:
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
             check=True,
             capture_output=True,
             text=True,
-            cwd=os.path.dirname(__file__),  # чтобы alembic.ini был найден
-        )
+            cwd=PROJECT_ROOT,
+            )
         print("Миграции успешно применены")
         if result.stdout.strip():
             print(result.stdout)
