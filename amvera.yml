@@ -9,11 +9,14 @@ build:
 run:
   command: |
     #!/bin/bash
-    set -e  # останавливаемся при ошибке
-    echo "Применяем миграции Alembic..."
+    set -e
+    echo "Ожидание БД..."
+    until python -c "import os; from sqlalchemy import create_engine; create_engine(os.getenv('DATABASE_URL')).connect().close()" 2>/dev/null; do
+      echo "БД недоступна, ждём..."
+      sleep 3
+    done
+    echo "БД готова"
+    echo "Применяем миграции..."
     alembic upgrade head
-    echo "Миграции применены"
     echo "Запуск приложения..."
     uvicorn main.main:app --host=0.0.0.0 --port=80
-  persistenceMount: /data
-  containerPort: "80"
