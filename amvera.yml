@@ -1,4 +1,4 @@
-meta:
+eta:
   environment: python
   toolchain:
     name: pip
@@ -7,6 +7,6 @@ build:
   requirementsPath: requirements.txt
   useCache: true
 run:
-  command: ./start.sh
+  command: uvicorn main.main:app --host=0.0.0.0 --port=$PORT
   persistenceMount: /data
   containerPort: "80"
