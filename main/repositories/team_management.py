@@ -32,7 +32,7 @@ class RoomTeamRepository:
             
 
     # записывает пользователей в комнату
-    async def _write_users_to_rooms(self, data: list[UserListRoom], room_id: UUID) -> UUID:
+    async def _write_users_to_rooms(self, data: list[UserListRoom], room_id: UUID) -> bool:
         stmt = insert(UsersToRooms).values(
             [{"user_id": uid.user_id, "room_id": room_id, "is_chief": uid.is_chief} for uid in data]
         )

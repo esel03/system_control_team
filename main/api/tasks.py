@@ -67,22 +67,6 @@ async def delete_task(
 
 
 @router.get(
-    "/statistics/{team_id}",
-    summary="Статистика команды по задачам за n-дней",
-    response_model=list[ListTasksOut],
-)
-async def get_period_tasks_for_team(
-    team_id: uuid.UUID,
-    days: int,
-    token: str = Depends(oauth2_scheme),
-    service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> list[ListTasksOut]:
-    token_data = await service_auth.get_current_user(token=token)
-    return await service.get_tasks_for_team(team_id, days)
-
-
-@router.get(
     "/statistics/{team_id}/{user_id}",
     summary="Статистика пользователя из команды по задачам за n-дней",
     response_model=list[ListTasksUserOut],
