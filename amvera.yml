@@ -7,37 +7,7 @@ build:
   requirementsPath: requirements.txt
   useCache: true
 run:
-  command: |
-    #!/bin/bash
-    set -e
-
-    echo "Ожидание доступности базы данных..."
-
-    until python -c '
-    import os
-    from sqlalchemy import create_engine
-    import asyncio
-
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise Exception("Переменная DATABASE_URL не установлена")
-
-    try:
-        engine = create_engine(database_url.replace("asyncpg", "psycopg2"))
-        with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        print("Подключение к БД установлено")
-    except Exception as e:
-        print(f"Ошибка подключения: {e}")
-        exit(1)
-    ' 2>/dev/null; do
-        echo "База данных недоступна, ждём 3 секунды..."
-        sleep 3
-    done
-
-    echo "Применяем миграции Alembic..."
-    alembic upgrade head
-    echo "Миграции применены"
-
-    echo "Запуск FastAPI приложения..."
-    uvicorn main.main:app --host=0.0.0.0 --port=80
+  command: uvicorn main.main:app --host=0.0.0.0 --port=80
+  persistenceMount: /data
+  containerPort: "80"
+    
