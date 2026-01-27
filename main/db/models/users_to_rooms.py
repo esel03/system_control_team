@@ -16,6 +16,4 @@ class UsersToRooms(Base):
         Boolean, default=False, comment="является ли лидером команды"
     )
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "room_id", name="uix_user_room"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "room_id", name="uix_user_room"),)

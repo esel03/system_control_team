@@ -4,8 +4,10 @@ import uuid
 from pydantic import BaseModel
 from enum import Enum
 
+
 class Priority(str, Enum):
     pass
+
 
 class TaskCreate(BaseModel):
     team_id: uuid.UUID
