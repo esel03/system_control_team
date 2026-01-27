@@ -29,4 +29,3 @@ class Team(Base):
     __table_args__ = (
         UniqueConstraint("team_id", "user_id", "room_id", name="uix_team_user_room"),
     )
-

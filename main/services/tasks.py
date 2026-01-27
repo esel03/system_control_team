@@ -1,19 +1,18 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Sequence
 from uuid import UUID
 import uuid
 from fastapi import HTTPException
-from main.db.models.tasks import Task
 from main.repositories.tasks import TaskRepository
 from main.schemas.tasks import ListTasksUserOut, TaskCreate, TaskUpdate, ListTasksOut
 from main.repositories.team_management import RoomTeamRepository
 
+
 @dataclass
 class TaskServices:
     repository: TaskRepository
-    room_team_repo : RoomTeamRepository
-    
+    room_team_repo: RoomTeamRepository
+
     async def create_task(self, data: TaskCreate, author_id: uuid.UUID) -> UUID:
         return await self.repository.create_task(data, author_id)
 
@@ -46,7 +45,6 @@ class TaskServices:
         start_date = end_date - timedelta(days=days_arg)
         tasks = await self.repository.get_tasks_for_team(team_id, start_date, end_date)
         return [ListTasksOut.model_validate(task) for task in tasks]
-            
 
     async def get_tasks_for_user_in_team(
         self, user_id: uuid.UUID, team_id: UUID, days_arg: int
@@ -65,4 +63,3 @@ class TaskServices:
             user_id, team_id, start_date, end_date
         )
         return [ListTasksUserOut.model_validate(task) for task in tasks]
-            

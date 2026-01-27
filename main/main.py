@@ -6,9 +6,10 @@ import subprocess
 import sys
 import os
 
-from main.api import auth, team_management, tasks
+from main.api import auth, team_management, tasks, room
 from main.pattern import front_template
 from main.config import settings
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,7 +22,6 @@ async def lifespan(app: FastAPI):
     os.environ["DATABASE_URL"] = settings.get_db_url()
     PROJECT_ROOT = Path(__file__).parent.parent
 
-
     try:
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
             capture_output=True,
             text=True,
             cwd=PROJECT_ROOT,
-            )
+        )
         print("Миграции успешно применены")
         if result.stdout.strip():
             print(result.stdout)
@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):
 
     print("Приложение остановлено")
 
+
 app = FastAPI(lifespan=lifespan)
 
 
@@ -53,6 +54,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR))
 
 app.include_router(auth.router)
+app.include_router(room.router)
 app.include_router(team_management.router)
 app.include_router(front_template.router)
 app.include_router(tasks.router)
