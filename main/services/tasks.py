@@ -12,7 +12,6 @@ from main.schemas.tasks import (
 )
 
 
-
 @dataclass
 class TaskServices:
     repository: TaskRepository
