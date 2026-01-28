@@ -5,13 +5,10 @@ from sqlalchemy import select, insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.db.models.teams import Team
 from main.db.models.rooms import Room
+from main.db.models.users import User
 from main.db.models.users_to_rooms import UsersToRooms
 from main.db.models.teams_to_rooms import TeamToRoom
-from main.schemas.team_management import (
-    UsersList,
-    UserListRoom,
-    NumUsId,
-)
+from main.schemas.team_management import UsersList, UserListRoom, NumUsId
 
 
 @dataclass
@@ -27,16 +24,38 @@ class RoomTeamRepository:
         return stmt.room_id
 
     # отдает список пользователей комнаты
-    async def _get_list_users_to_rooms(self, room_id: UUID) -> set[UUID]:
-        stmt = select(UsersToRooms.user_id).where(Room.room_id == room_id)
-        list_users_to_rooms = await self.db.execute(stmt)
-        result = list_users_to_rooms.scalars().all()
-        return set(result)
+    async def _get_list_users_to_rooms(self, room_id: UUID) -> list[dict]:
+        stmt = (
+            select(
+                User.user_id,
+                User.email,
+                User.last_name,
+                User.first_name,
+                User.patronymic_name,
+            )
+            .join(UsersToRooms, User.user_id == UsersToRooms.user_id)
+            .where(UsersToRooms.room_id == room_id)
+        )
+        return (await self.db.execute(stmt)).mappings().all()
+
+    async def _get_list_users_to_teams(self, team_id: UUID) -> list[dict]:
+        stmt = (
+            select(
+                User.user_id,
+                User.email,
+                User.last_name,
+                User.first_name,
+                User.patronymic_name,
+            )
+            .join(Team, User.user_id == Team.user_id)
+            .where(Team.team_id == team_id)
+        )
+        return (await self.db.execute(stmt)).mappings().all()
 
     # записывает пользователей в комнату
     async def _write_users_to_rooms(
         self, data: list[UserListRoom], room_id: UUID
-    ) -> bool:
+    ) -> UUID:
         stmt = insert(UsersToRooms).values(
             [
                 {"user_id": uid.user_id, "room_id": room_id, "is_chief": uid.is_chief}
@@ -132,11 +151,15 @@ class RoomTeamRepository:
         return team_id
 
     # отдает список комнат, в которых состоит пользователь
-    async def get_list_rooms(self, user_id: UUID):
-        stmt = select(UsersToRooms.room_id).where(UsersToRooms.user_id == user_id)
-        return (await self.db.execute(stmt)).scalars().all()
+    async def get_list_rooms(self, user_id: UUID) -> list[dict]:
+        stmt = (
+            select(Room.room_id, Room.name)
+            .join(UsersToRooms, UsersToRooms.room_id == Room.room_id)
+            .where(UsersToRooms.user_id == user_id)
+        )
+        return (await self.db.execute(stmt)).mappings().all()
 
-    # отдает is_chief
+    # отдает is_chief юзера по комнате
     async def get_info_about_user_in_room(
         self, user_id: UUID, room_id: UUID
     ) -> bool | None:
@@ -151,6 +174,7 @@ class RoomTeamRepository:
             return None
         return None
 
+    # отдает is_chief юзера по команде
     async def get_info_about_user_in_team(
         self, user_id: UUID, team_id: UUID
     ) -> bool | None:
@@ -194,3 +218,17 @@ class RoomTeamRepository:
         stmt = select(Team).where(Team.team_id == team_id, Team.user_id == user_id)
         result = await self.db.execute(stmt)
         return result.scalar() is not None
+
+    # отдает список команд, в которых состоит пользователь
+    async def get_list_teams(self, user_id: UUID, room_id: UUID):
+        stmt = select(Team.team_id, Team.name, Team.role, Team.tag).where(
+            Team.user_id == user_id, Team.room_id == room_id
+        )
+        return (await self.db.execute(stmt)).mappings().all()
+
+    # отдает список команд, всех абсолютно в комнате
+    async def get_list_teams_not_user(self, room_id: UUID):
+        stmt = select(Team.team_id, Team.name, Team.role, Team.tag).where(
+            Team.room_id == room_id
+        )
+        return (await self.db.execute(stmt)).mappings().all()

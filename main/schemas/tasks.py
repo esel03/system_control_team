@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+
 class TaskCreate(BaseModel):
     team_id: UUID
     task_name: str

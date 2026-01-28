@@ -107,22 +107,6 @@ class RoomTeamServices:
                 detail="Пользователи не добавились в комнату",
             )
 
-    # TODO: удалить?
-    # сравнение списков пользователей и комнаты
-    async def _matched_users(
-        self, room_id: UUID, list_users: list
-    ) -> list[UUID] | None:
-        values = set()
-        for user in list_users:
-            values.add(user.user_id)
-
-        if not (
-            result_set := values
-            - set(await self.repository._get_list_users_to_rooms(room_id=room_id))
-        ):
-            return None
-        return list(result_set)
-
     # удаление участника/ов из комнаты и из команд лежащих в комнате
     async def delete_people_to_room(self, room_id: UUID, data: DeleteRoomPeople) -> str:
         if not (await self.repository.check_room(room_id=room_id)):
@@ -221,13 +205,29 @@ class RoomTeamServices:
     # получение списка комнат юзера
     async def get_list_rooms(self, user_id: UUID):
         result = await self.repository.get_list_rooms(user_id=user_id)
-        return {"list_room_id": [id for id in result]}
+        return {"list_rooms": [dict(row) for row in result]}
 
+    # получение списка команд юзера
+    async def get_list_teams(self, user_id: UUID, room_id: UUID):
+        if not (await self.repository.check_room(room_id=room_id)):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
+            )
+        if await self.repository.get_info_about_user_in_room(
+            user_id=user_id, room_id=room_id
+        ):
+            result = await self.repository.get_list_teams_not_user(room_id=room_id)
+        else:
+            result = await self.repository.get_list_teams(
+                user_id=user_id, room_id=room_id
+            )
+        return {"list_teams": [dict(row) for row in result]}
 
-# TODO: завтра доделать)
+    # получение списка юзеров в комнате
+    async def get_list_users_rooms(self, room_id: UUID):
+        result = await self.repository._get_list_users_to_rooms(room_id=room_id)
+        return {"list_users": [dict(row) for row in result]}
 
-# async def get_list_users_in_rooms(self, room_id: UUID):
-#    result = await self.repository._get_list_users_to_rooms(room_id=room_id)
-#    return
-
-# async def get_list_teams(self, user_id: UUID):
+    async def get_list_users_teams(self, team_id: UUID):
+        result = await self.repository._get_list_users_to_teams(team_id=team_id)
+        return {"list_users": [dict(row) for row in result]}

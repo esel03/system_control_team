@@ -7,17 +7,17 @@ from main.services.auth import oauth2_scheme
 from main.services.team_management import RoomTeamServices
 from main.repositories.team_management import RoomTeamRepository
 from main.schemas.team_management import (
-    TeamOut,
-    AddToTeamIn,
-    ListTeam,
+    RoomOut,
+    AddToRoomIn,
+    CreateRoomOut,
+    ListRoom,
     ListUserOut,
 )
 from uuid import UUID
 import random
 from datetime import datetime
 
-
-router = APIRouter(prefix="/team", tags=["team"])
+router = APIRouter(prefix="/room", tags=["room"])
 
 
 def get_team_service(
@@ -28,84 +28,75 @@ def get_team_service(
 
 
 @router.get(
-    "/create_team/{room_id}/{name}", summary="Создание команды", response_model=TeamOut
+    "/create_room/{name}", summary="Создание комнаты", response_model=CreateRoomOut
 )
-async def create_team(
-    room_id: str,
+async def create_room(
     name: str,
     token: str = Depends(oauth2_scheme),
     service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> TeamOut:
+) -> CreateRoomOut:
     result = await service_auth.get_current_user(token=token)
-    return TeamOut(
-        team_id=await service.create_team(
-            user_id=result.user_id, room_id=room_id, name=name
-        )
-    )
+    return await service.create_room(user_id=result.user_id, name=name)
 
 
-@router.get(
-    "/create_team/{room_id}", summary="Создание команды", response_model=TeamOut
-)
-async def create_team(
-    room_id: str,
-    name: str = f'Команда:{(datetime.now().date()).strftime("%Y-%m-%d")}-{random.randint(10000, 99999)}',
+@router.get("/create_room/", summary="Создание комнаты", response_model=CreateRoomOut)
+async def create_room(
+    name: str = f'КОМНАТА:{(datetime.now().date()).strftime("%Y-%m-%d")}-{random.randint(1000000, 9999999)}',
     token: str = Depends(oauth2_scheme),
     service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> TeamOut:
+) -> CreateRoomOut:
     result = await service_auth.get_current_user(token=token)
-    return TeamOut(
-        team_id=await service.create_team(
-            user_id=result.user_id, room_id=room_id, name=name
-        )
-    )
+    return await service.create_room(user_id=result.user_id, name=name)
 
 
 @router.post(
-    "/add_people_to_team",
-    summary="Добавление участника/ов в команду",
-    response_model=TeamOut,
+    "/add_people_to_room",
+    summary="Добавление участника/ов в комнату",
+    response_model=RoomOut,
 )
-async def add_people_to_team(
-    data: AddToTeamIn,
+async def add_people_to_room(
+    data: AddToRoomIn,
     token: str = Depends(oauth2_scheme),
     service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> TeamOut:
+) -> RoomOut:
     result = await service_auth.get_current_user(token=token)
-    await service.access_right_user_in_team(
-        user_id=result.user_id, team_id=data.team_id
+    await service.access_right_user_in_room(
+        user_id=result.user_id, room_id=data.room_id
     )
-    return await service.add_people_to_team(user_id=result.user_id, data=data)
+    return RoomOut(
+        room_id=await service.add_people_to_room(
+            room_id=data.room_id, data=data.list_users
+        )
+    )
 
 
 @router.get(
-    "/get_list_teams/{room_id}",
-    summary="Получение всех команд пользователя",
-    response_model=ListTeam,
+    "/get_list_rooms",
+    summary="Получение всех комнат пользователя",
+    response_model=ListRoom,
 )
-async def get_rooms(
-    room_id: str,
+async def get_list_rooms(
     token: str = Depends(oauth2_scheme),
     service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> ListTeam:
+) -> ListRoom:
     result = await service_auth.get_current_user(token=token)
-    return await service.get_list_teams(user_id=result.user_id, room_id=UUID(room_id))
+    return await service.get_list_rooms(user_id=result.user_id)
 
 
 @router.get(
-    "/get_list_users_teams/{team_id}",
+    "/get_list_users_rooms/{room_id}",
     summary="Получение всех юзеров в комнате",
     response_model=ListUserOut,
 )
-async def get_list_users_teams(
-    team_id: str,
+async def get_list_users_rooms(
+    room_id: str,
     token: str = Depends(oauth2_scheme),
     service: RoomTeamServices = Depends(get_team_service),
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> ListUserOut:
     await service_auth.get_current_user(token=token)
-    return await service.get_list_users_teams(team_id=UUID(team_id))
+    return await service.get_list_users_rooms(room_id=UUID(room_id))

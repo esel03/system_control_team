@@ -50,6 +50,18 @@ class RoomOut(BaseModel):
     room_id: UUID
 
 
+class ListRoom(BaseModel):
+    list_rooms: list
+
+
+class ListUserOut(BaseModel):
+    list_users: list
+
+
+class ListTeam(BaseModel):
+    list_teams: list
+
+
 class UserListRoom(BaseModel):
     user_id: UUID
     is_chief: bool = False
