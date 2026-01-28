@@ -1,6 +1,5 @@
 from main.db.base import Base
-from typing import List
-from sqlalchemy import String, Uuid, JSON
+from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 
@@ -14,4 +13,3 @@ class Room(Base):
     name: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="название комнаты"
     )
-    

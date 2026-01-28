@@ -7,19 +7,14 @@ from main.services.auth import oauth2_scheme
 from main.services.team_management import RoomTeamServices
 from main.repositories.team_management import RoomTeamRepository
 from main.schemas.team_management import (
-    CreateRoomIn,
     RoomOut,
     AddToRoomIn,
-    CreateTeamIn,
     TeamOut,
     AddToTeamIn,
-    DeleteTeamPeople,
-    DeleteRoomPeople,
     CreateRoomOut,
-    AddToTeamOut,
 )
 
-import random 
+import random
 from datetime import datetime
 
 
@@ -33,7 +28,9 @@ def get_team_service(
     return RoomTeamServices(repository=repo)
 
 
-@router.get("/create_room/{name}", summary="Создание комнаты", response_model=CreateRoomOut)
+@router.get(
+    "/create_room/{name}", summary="Создание комнаты", response_model=CreateRoomOut
+)
 async def create_room(
     name: str,
     token: str = Depends(oauth2_scheme),
@@ -67,8 +64,15 @@ async def add_people_to_room(
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> RoomOut:
     result = await service_auth.get_current_user(token=token)
-    await service.access_right_user_in_room(user_id=result.user_id, room_id=data.room_id)
-    return RoomOut(room_id=await service.add_people_to_room(room_id=data.room_id, data=data.list_users))
+    await service.access_right_user_in_room(
+        user_id=result.user_id, room_id=data.room_id
+    )
+    return RoomOut(
+        room_id=await service.add_people_to_room(
+            room_id=data.room_id, data=data.list_users
+        )
+    )
+
 
 """
 @router.post(
@@ -89,7 +93,9 @@ async def delete_people_to_room(
 """
 
 
-@router.get("/create_team/{room_id}/{name}", summary="Создание команды", response_model=TeamOut)
+@router.get(
+    "/create_team/{room_id}/{name}", summary="Создание команды", response_model=TeamOut
+)
 async def create_team(
     room_id: str,
     name: str,
@@ -98,10 +104,16 @@ async def create_team(
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TeamOut:
     result = await service_auth.get_current_user(token=token)
-    return TeamOut(team_id=await service.create_team(user_id=result.user_id, room_id=room_id, name=name))
+    return TeamOut(
+        team_id=await service.create_team(
+            user_id=result.user_id, room_id=room_id, name=name
+        )
+    )
 
 
-@router.get("/create_team/{room_id}", summary="Создание команды", response_model=TeamOut)
+@router.get(
+    "/create_team/{room_id}", summary="Создание команды", response_model=TeamOut
+)
 async def create_team(
     room_id: str,
     name: str = f'Команда:{(datetime.now().date()).strftime("%Y-%m-%d")}-{random.randint(10000, 99999)}',
@@ -110,7 +122,11 @@ async def create_team(
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TeamOut:
     result = await service_auth.get_current_user(token=token)
-    return TeamOut(team_id=await service.create_team(user_id=result.user_id, room_id=room_id, name=name))
+    return TeamOut(
+        team_id=await service.create_team(
+            user_id=result.user_id, room_id=room_id, name=name
+        )
+    )
 
 
 @router.post(
@@ -125,7 +141,9 @@ async def add_people_to_team(
     service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TeamOut:
     result = await service_auth.get_current_user(token=token)
-    await service.access_right_user_in_team(user_id=result.user_id, team_id=data.team_id)
+    await service.access_right_user_in_team(
+        user_id=result.user_id, team_id=data.team_id
+    )
     return await service.add_people_to_team(user_id=result.user_id, data=data)
 
 
@@ -148,7 +166,9 @@ async def delete_people_to_team(
 
 
 @router.get(
-    "/get_list_rooms", summary="Получение всех комнат пользователя", response_model=RoomOut
+    "/get_list_rooms",
+    summary="Получение всех комнат пользователя",
+    response_model=RoomOut,
 )
 async def get_list_rooms(
     token: str = Depends(oauth2_scheme),
