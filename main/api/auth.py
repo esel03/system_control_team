@@ -54,7 +54,17 @@ async def login_user(
 @router.post("/logout", summary="выход пользователя")
 async def logout_user(
     data: LogoutRequest,
-    token: str = Depends(oauth2_scheme),
+    #token: str = Depends(oauth2_scheme),
     service: AuthRegUserServices = Depends(get_auth_service),
 ):
     return await service.logout_service(data.refresh_token)
+
+
+@router.get("/info", summary="информация о пользователе")
+async def logout_user(
+    token: str = Depends(oauth2_scheme),
+    service: AuthRegUserServices = Depends(get_auth_service),
+):
+    result = await service.get_current_user(token=token)
+    return await service.info_user(user_id=result.user_id)
+

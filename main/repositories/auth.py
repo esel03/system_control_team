@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from sqlalchemy import select, not_
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.db.models.users import User
+from uuid import UUID
 
 
 @dataclass
@@ -24,3 +25,8 @@ class AuthRegUserRepository:
         stmt = select(User).where(User.email == data.email, not_(User.is_deleted))
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+    
+    async def info_user(self, user_id: UUID):
+        stmt = (select(User.email, User.last_name, User.first_name, User.patronymic_name)
+                .where(User.user_id == user_id))
+        return (await self.db.execute(stmt)).mappings().all()

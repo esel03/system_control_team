@@ -5,6 +5,7 @@
 from main.repositories.auth import AuthRegUserRepository
 from main.services.jwt import JwtAuth
 from main.services.utils import Utils
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from main.schemas.auth import RegistrationIn
@@ -65,3 +66,7 @@ class AuthRegUserServices:
 
     async def logout_service(self, refresh_token: str) -> dict[str, str]:
         return await jwt_token.delete_refresh_token(refresh_token)
+    
+
+    async def info_user(self, user_id: UUID):
+        return await self.repository.info_user(user_id=user_id)
