@@ -70,11 +70,8 @@ class RoomTeamServices:
         """
         if result := await self.repository.create_room(name=name):
             values = [UserListRoom(user_id=user_id, is_chief=True)]
-            if (
-                await self.repository.write_users_to_room_safe(
-                    data=values, room_id=result
-                )
-                == True
+            if await self.repository.write_users_to_room_safe(
+                data=values, room_id=result
             ):
                 return CreateRoomOut(room_id=result)
             else:
@@ -154,11 +151,8 @@ class RoomTeamServices:
             ]  # список юзеров, которых нет в комнате
 
             # проверка на права юзера на комнату
-            if (
-                await self.repository.get_info_about_user_in_room(
-                    user_id=user_id, room_id=room_id
-                )
-                == True
+            if await self.repository.get_info_about_user_in_room(
+                user_id=user_id, room_id=room_id
             ):
                 await self.add_people_to_room(
                     room_id=room_id,

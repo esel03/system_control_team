@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from uuid import UUID
-from sqlalchemy import delete, func, select, update, exists
+from sqlalchemy import delete, func, select, update, exists, not_
 from sqlalchemy.ext.asyncio import AsyncSession
 from main.db.models.tasks import Task
 from main.db.models.users import User
@@ -37,7 +37,7 @@ class TaskRepository:
         stmt = (
             select(Team)
             .where(Team.user_id == user_id)
-            .where(Team.is_chief == True)
+            .where(Team.is_chief)
             .where(Team.team_id == team_id)
         )
         result = await self.db.execute(stmt)
@@ -145,7 +145,7 @@ class TaskRepository:
             stmt = (
                 select(Task)
                 .where(Task.team_id == team_id)
-                .where(Task.is_completed == True)
+                .where(Task.is_completed)
                 .where(Task.task_finish_date >= start_date)
                 .where(Task.task_finish_date <= end_date)
             )
@@ -153,7 +153,7 @@ class TaskRepository:
             stmt = (
                 select(Task)
                 .where(Task.team_id == team_id)
-                .where(Task.is_completed == False)
+                .where(not_(Task.is_completed))
             )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
@@ -171,7 +171,7 @@ class TaskRepository:
                 select(Task)
                 .where(Task.team_id == team_id)
                 .where(Task.executor == user_id)
-                .where(Task.is_completed == True)
+                .where(Task.is_completed)
                 .where(Task.task_finish_date >= start_date)
                 .where(Task.task_finish_date <= end_date)
             )
@@ -180,7 +180,7 @@ class TaskRepository:
                 select(Task)
                 .where(Task.team_id == team_id)
                 .where(Task.executor == user_id)
-                .where(Task.is_completed == False)
+                .where(not_(Task.is_completed))
             )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
@@ -192,7 +192,7 @@ class TaskRepository:
             select(func.count(Task.task_id))
             .where(Task.team_id == team_id)
             .where(Task.executor == user_id)
-            .where(Task.is_completed == True)
+            .where(Task.is_completed)
             .where(Task.task_finish_date >= start_date)
             .where(Task.task_finish_date <= end_date)
         )
@@ -204,7 +204,7 @@ class TaskRepository:
             select(func.count(Task.task_id))
             .where(Task.team_id == team_id)
             .where(Task.executor == user_id)
-            .where(Task.is_completed == False)
+            .where(not_(Task.is_completed))
         )
         result = await self.db.execute(stmt)
         return result.scalar() or 0

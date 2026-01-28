@@ -169,7 +169,7 @@ class RoomTeamRepository:
             .where(UsersToRooms.room_id == room_id)
         )
         if result := (await self.db.execute(stmt)).scalar_one_or_none():
-            if result == True:
+            if result:
                 return True
             return None
         return None
@@ -184,7 +184,7 @@ class RoomTeamRepository:
             .where(Team.team_id == team_id)
         )
         if result := (await self.db.execute(stmt)).scalar_one_or_none():
-            if result == True:
+            if result:
                 return True
             return None
         return None

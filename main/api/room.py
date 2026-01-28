@@ -30,7 +30,7 @@ def get_team_service(
 @router.get(
     "/create_room/{name}", summary="Создание комнаты", response_model=CreateRoomOut
 )
-async def create_room(
+async def create_room_name(
     name: str,
     token: str = Depends(oauth2_scheme),
     service: RoomTeamServices = Depends(get_team_service),
