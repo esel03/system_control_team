@@ -97,11 +97,6 @@ Thumbs.db
 *.bak
 *.tmp
 
-# === CI/CD (если не используется) ===
-.dockerignore
-.gitlab-ci.yml
-.coveragerc
-
 # === Локальные настройки ===
 .env
 .local

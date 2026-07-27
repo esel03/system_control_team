@@ -1,17 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Применяем миграции к базе данных
-echo "Запуск миграций Alembic..."
-alembic upgrade head
-
-# Проверяем, успешно ли прошли миграции
-if [ $? -ne 0 ]; then
-    echo "Ошибка при выполнении миграций"
-    exit 1
-fi
-
-echo "Миграции успешно применены"
-
-# Запуск FastAPI-приложения через uvicorn
-echo "Запуск приложения..."
-uvicorn main.main:app --host 0.0.0.0 --port 8000 --reload
+exec uvicorn main.main:app \
+  --host 0.0.0.0 \
+  --port "${PORT:-8000}" \
+  --workers "${WEB_CONCURRENCY:-1}" \
+  --proxy-headers \
+  --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}"

@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Uuid, String, Boolean
 import uuid
+
+from sqlalchemy import Boolean, Index, String, Uuid, func, text
+from sqlalchemy.orm import Mapped, mapped_column
+
 from main.db.base import Base
 
 
@@ -19,12 +21,18 @@ class User(Base):
     last_name: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="фамилия пользователя"
     )
-    patronymic_name: Mapped[str] = mapped_column(
-        String(100), comment="отчество пользователя"
+    patronymic_name: Mapped[str | None] = mapped_column(
+        String(100), nullable=True, comment="отчество пользователя"
     )
     password: Mapped[str] = mapped_column(
-        String(100), nullable=False, comment="пароль пользователя"
+        String(255), nullable=False, comment="хеш пароля пользователя"
     )
     is_deleted: Mapped[bool] = mapped_column(
-        Boolean, default=False, comment="флаг удаленности пользователя"
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="флаг удаления пользователя",
     )
+
+    __table_args__ = (Index("uix_users_email_lower", func.lower(email), unique=True),)

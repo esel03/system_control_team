@@ -1,34 +1,24 @@
-"""
-Маршруты аутентификации: регистрация, вход, выход, обновление токена, получение информации о пользователе.
-
-Этот роутер предоставляет API-эндпоинты для:
-- Регистрации нового пользователя
-- Авторизации (логин)
-- Получения новых access-токенов по refresh-токену
-- Выхода из аккаунта (аннулирование refresh-токена)
-- Получения информации о текущем пользователе
-
-Используется JWT-аутентификация с OAuth2PasswordBearer.
-Токены хранятся/валидируются через Redis.
-"""
-
 from typing import Annotated
-from fastapi import APIRouter, Depends
-from main.db.connect import get_async_session
+
+from fastapi import APIRouter, Depends, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from main.services.auth import AuthRegUserServices
+
+from main.db.connect import get_async_session
 from main.repositories.auth import AuthRegUserRepository
 from main.schemas.auth import (
+    GetToken,
+    LogIn,
     LogoutRequest,
+    MessageOut,
     RegistrationIn,
     RegistrationOut,
-    GetToken,
-    OutToken,
+    Token,
+    TokenData,
+    UserProfileOut,
 )
-from main.schemas.auth import LogIn, Token
-from fastapi.security import OAuth2PasswordRequestForm
-from main.services.auth import oauth2_scheme
-
+from main.services.auth import AuthRegUserServices, oauth2_scheme
+from main.services.rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,126 +26,77 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def get_auth_service(
     session: AsyncSession = Depends(get_async_session),
 ) -> AuthRegUserServices:
-    """
-    Зависимость для получения экземпляра сервиса аутентификации.
+    return AuthRegUserServices(repository=AuthRegUserRepository(db=session))
 
-    Создаёт репозиторий и сервис с текущей асинхронной сессией.
 
-    :param session: Асинхронная сессия SQLAlchemy
-    :return: Экземпляр AuthRegUserServices
-    """
-    repo = AuthRegUserRepository(db=session)
-    return AuthRegUserServices(repository=repo)
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    service: AuthRegUserServices = Depends(get_auth_service),
+) -> TokenData:
+    return await service.get_current_user(token)
+
+
+def _client_identity(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",", maxsplit=1)[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 @router.post(
     "/register",
-    summary="Регистрация нового пользователя",
-    description="Создаёт нового пользователя после проверки уникальности email. Пароль хэшируется.",
+    summary="Регистрация пользователя",
     response_model=RegistrationOut,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
 async def registration_users(
     data: RegistrationIn,
+    request: Request,
     service: AuthRegUserServices = Depends(get_auth_service),
 ) -> RegistrationOut:
-    """
-    Эндпоинт регистрации пользователя.
-
-    :param data: Данные для регистрации (email, пароль, имя, фамилия, отчество)
-    :param service: Сервис аутентификации (внедряется через Depends)
-    :return: Объект с email нового пользователя
-    :raises HTTPException(404): Если email уже занят
-    """
+    await enforce_rate_limit(_client_identity(request), "register", 5, 3600)
     email = await service.registration_services(data=data)
     return RegistrationOut(email=email)
 
 
 @router.post(
-    "/update_acces_token",
-    summary="Обновление access-токена",
-    description="Генерирует новый access-токен на основе действительного refresh-токена.",
-    response_model=OutToken,
-)
-async def get_token(
-    data: GetToken,
-    service: AuthRegUserServices = Depends(get_auth_service),
-) -> OutToken:
-    """
-    Обновление access-токена с помощью refresh-токена.
-
-    :param data: Схема, содержащая refresh_token
-    :param service: Сервис аутентификации
-    :return: Новые access и refresh токены
-    :raises HTTPException(401): Если refresh-токен недействителен или отозван
-    """
-    new_access_token = await service.update_token(data=data.model_dump())
-    return OutToken(access_token=new_access_token)
-
-
-@router.post(
-    "/login",
-    summary="Авторизация пользователя",
-    description="Проверяет email и пароль, возвращает JWT-токены при успешной аутентификации.",
+    "/refresh",
+    summary="Обновление пары токенов",
     response_model=Token,
 )
-async def login_user(
-    data: Annotated[OAuth2PasswordRequestForm, Depends()],
+async def refresh_token(
+    data: GetToken,
+    request: Request,
     service: AuthRegUserServices = Depends(get_auth_service),
 ) -> Token:
-    """
-    Вход пользователя в систему.
-
-    Использует стандартную OAuth2-форму (username/password).
-    Проверяет существование пользователя и корректность пароля.
-
-    :param data: OAuth2-форма с логином (email) и паролем
-    :param service: Сервис аутентификации
-    :return: JWT-токены (access + refresh)
-    :raises HTTPException(401): При неверных учётных данных
-    """
-    login_data = LogIn(email=data.username, password=data.password)
-    return await service.login_service(login_data)
+    await enforce_rate_limit(_client_identity(request), "refresh", 20, 60)
+    return await service.update_token(data.refresh_token)
 
 
-@router.post(
-    "/logout",
-    summary="Выход из аккаунта",
-    description="Аннулирует refresh-токен, чтобы предотвратить его дальнейшее использование.",
-)
+@router.post("/login", summary="Авторизация пользователя", response_model=Token)
+async def login_user(
+    data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    request: Request,
+    service: AuthRegUserServices = Depends(get_auth_service),
+) -> Token:
+    await enforce_rate_limit(_client_identity(request), "login", 10, 60)
+    return await service.login_service(
+        LogIn(email=data.username, password=data.password)
+    )
+
+
+@router.post("/logout", summary="Выход пользователя", response_model=MessageOut)
 async def logout_user(
     data: LogoutRequest,
+    current_user: TokenData = Depends(get_current_user),
     service: AuthRegUserServices = Depends(get_auth_service),
-):
-    """
-    Выход пользователя: удаляет refresh-токен из Redis.
-
-    :param data: Запрос, содержащий refresh_token
-    :param service: Сервис аутентификации
-    :return: Сообщение об успешном выходе
-    :raises HTTPException(400): Если токен отсутствует или уже отозван
-    """
-    return await service.logout_service(data.refresh_token)
+) -> dict[str, str]:
+    return await service.logout_service(data.refresh_token, current_user.user_id)
 
 
-@router.get(
-    "/info",
-    summary="Получение информации о пользователе",
-    description="Возвращает основные данные авторизованного пользователя (email, ФИО).",
-)
-async def get_user_info(
-    token: str = Depends(oauth2_scheme),
+@router.get("/me", summary="Текущий пользователь", response_model=UserProfileOut)
+async def get_user_profile(
+    current_user: TokenData = Depends(get_current_user),
     service: AuthRegUserServices = Depends(get_auth_service),
-):
-    """
-    Получение информации о текущем пользователе.
-
-    Требуется валидный access-токен (автоматически извлекается из заголовка Authorization).
-
-    :param token: access-токен
-    :param service: Сервис аутентификации
-    :return: Словарь с полями: email, first_name, last_name, patronymic_name 
-    :raises HTTPException(401): Если токен недействителен или истёк
-    """
-    result = await service.get_current_user(token=token)
-    return await service.info_user(user_id=result.user_id)
+) -> UserProfileOut:
+    return await service.get_user_profile(current_user.user_id)

@@ -1,0 +1,62 @@
+name: Static checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    env:
+      DB_USER: ci
+      DB_PASSWORD: ci-password
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: ci
+      SECRET_KEY: ci-secret-key-with-at-least-32-characters
+      REDIS_URL: redis://localhost:6379/0
+      ENVIRONMENT: ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Compile
+        run: python -m compileall -q main alembic
+
+      - name: Ruff
+        run: ruff check main alembic
+
+      - name: Black
+        run: black --check main alembic
+
+      - name: Check migration graph
+        run: alembic heads
+
+      - name: Check OpenAPI route uniqueness
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from main.main import app
+
+          routes = [
+              (tuple(sorted(route.methods)), route.path)
+              for route in app.routes
+              if getattr(route, "methods", None)
+          ]
+          duplicates = {
+              route: count
+              for route, count in Counter(routes).items()
+              if count > 1
+          }
+          if duplicates:
+              raise SystemExit(f"Duplicate routes: {duplicates}")
+          app.openapi()
+          PY

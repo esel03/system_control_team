@@ -1,234 +1,306 @@
 from dataclasses import dataclass
 from uuid import UUID
+
+from sqlalchemy import delete, exists, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy import select, insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from main.db.models.teams import Team
+
 from main.db.models.rooms import Room
+from main.db.models.teams import TeamMember
+from main.db.models.teams_to_rooms import TeamToRoom
 from main.db.models.users import User
 from main.db.models.users_to_rooms import UsersToRooms
-from main.db.models.teams_to_rooms import TeamToRoom
-from main.schemas.team_management import UsersList, UserListRoom, NumUsId
+from main.schemas.team_management import RoomMemberIn, TeamMemberIn
 
 
 @dataclass
 class RoomTeamRepository:
     db: AsyncSession
 
-    # создает комнату и возвращает ее id
-    async def create_room(self, name: str) -> UUID | None:
-        stmt = Room(name=name)
-        self.db.add(stmt)
-        await self.db.commit()
-        await self.db.refresh(stmt)
-        return stmt.room_id
+    async def room_exists(self, room_id: UUID) -> bool:
+        result = await self.db.execute(select(exists().where(Room.room_id == room_id)))
+        return bool(result.scalar())
 
-    # отдает список пользователей комнаты
-    async def _get_list_users_to_rooms(self, room_id: UUID) -> list[dict]:
-        stmt = (
-            select(
-                User.user_id,
-                User.email,
-                User.last_name,
-                User.first_name,
-                User.patronymic_name,
+    async def team_exists(self, team_id: UUID) -> bool:
+        result = await self.db.execute(
+            select(exists().where(TeamToRoom.team_id == team_id))
+        )
+        return bool(result.scalar())
+
+    async def active_user_ids(self, user_ids: set[UUID]) -> set[UUID]:
+        if not user_ids:
+            return set()
+        result = await self.db.execute(
+            select(User.user_id).where(
+                User.user_id.in_(user_ids),
+                User.is_deleted.is_(False),
             )
-            .join(UsersToRooms, User.user_id == UsersToRooms.user_id)
-            .where(UsersToRooms.room_id == room_id)
         )
-        return (await self.db.execute(stmt)).mappings().all()
+        return set(result.scalars().all())
 
-    async def _get_list_users_to_teams(self, team_id: UUID) -> list[dict]:
-        stmt = (
+    async def is_room_member(self, user_id: UUID, room_id: UUID) -> bool:
+        result = await self.db.execute(
             select(
-                User.user_id,
-                User.email,
-                User.last_name,
-                User.first_name,
-                User.patronymic_name,
+                exists().where(
+                    UsersToRooms.user_id == user_id,
+                    UsersToRooms.room_id == room_id,
+                )
             )
-            .join(Team, User.user_id == Team.user_id)
-            .where(Team.team_id == team_id)
         )
-        return (await self.db.execute(stmt)).mappings().all()
+        return bool(result.scalar())
 
-    # записывает пользователей в комнату
-    async def _write_users_to_rooms(
-        self, data: list[UserListRoom], room_id: UUID
-    ) -> UUID:
-        stmt = insert(UsersToRooms).values(
-            [
-                {"user_id": uid.user_id, "room_id": room_id, "is_chief": uid.is_chief}
-                for uid in data
-            ]
+    async def is_room_chief(self, user_id: UUID, room_id: UUID) -> bool:
+        result = await self.db.execute(
+            select(
+                exists().where(
+                    UsersToRooms.user_id == user_id,
+                    UsersToRooms.room_id == room_id,
+                    UsersToRooms.is_chief.is_(True),
+                )
+            )
         )
-        result = await self.db.execute(stmt)
-        await self.db.commit()
-        if result.rowcount > 0:
-            return True
-        return False
+        return bool(result.scalar())
 
-    # проверяет существование комнаты
-    async def check_room(self, room_id: UUID):
-        stmt = select(Room).where(Room.room_id == room_id)
-        result = await self.db.execute(stmt)
+    async def is_team_member(self, user_id: UUID, team_id: UUID) -> bool:
+        result = await self.db.execute(
+            select(
+                exists().where(
+                    TeamMember.user_id == user_id,
+                    TeamMember.team_id == team_id,
+                )
+            )
+        )
+        return bool(result.scalar())
+
+    async def is_team_chief(self, user_id: UUID, team_id: UUID) -> bool:
+        result = await self.db.execute(
+            select(
+                exists().where(
+                    TeamMember.user_id == user_id,
+                    TeamMember.team_id == team_id,
+                    TeamMember.is_chief.is_(True),
+                )
+            )
+        )
+        return bool(result.scalar())
+
+    async def get_room_id_for_team(self, team_id: UUID) -> UUID | None:
+        result = await self.db.execute(
+            select(TeamToRoom.room_id).where(TeamToRoom.team_id == team_id)
+        )
         return result.scalar_one_or_none()
 
-    # удаляет участников из комнаты, соответсвенно из команд, в этой комнате
-    async def delete_people_to_room(self, room_id: UUID, data: list[UUID]):
-        await self.db.execute(
-            delete(Team).where(Team.room_id == room_id).where(Team.user_id.in_(data))
-        )
-
-        await self.db.execute(
-            delete(UsersToRooms)
-            .where(UsersToRooms.room_id == room_id)
-            .where(UsersToRooms.user_id.in_(data))
-        )
-
-        await self.db.commit()
-        return room_id
-
-    # создает команду
-    async def create_team(self, room_id: UUID) -> UUID | None:
-        stmt = TeamToRoom(room_id=room_id)
-        self.db.add(stmt)
-        await self.db.commit()
-        await self.db.refresh(stmt)
-        return stmt.team_id
-
-    # записывает/добавляет пользователей в команду
-    async def _write_users_to_teams(
-        self, team_id: UUID, room_id: UUID, name: str, data: list[UsersList]
-    ) -> UUID:
-        stmt = (
-            pg_insert(Team)
-            .values(
-                [
-                    {
-                        "team_id": team_id,
-                        "room_id": room_id,
-                        "user_id": uid.user_id,
-                        "name": name,
-                        "role": uid.role,
-                        "tag": uid.tag,
-                        "is_chief": uid.is_chief,
-                    }
-                    for uid in data
-                ]
+    async def create_room(self, name: str, owner_id: UUID) -> UUID:
+        room = Room(name=name)
+        self.db.add(room)
+        await self.db.flush()
+        self.db.add(
+            UsersToRooms(
+                room_id=room.room_id,
+                user_id=owner_id,
+                is_chief=True,
             )
-            .on_conflict_do_nothing(index_elements=["user_id", "room_id", "team_id"])
         )
-        await self.db.execute(stmt)
-        await self.db.commit()
-        return team_id
+        await self.db.flush()
+        return room.room_id
 
-    async def are_users_in_room(self, room_id: UUID, data: list[UUID]) -> NumUsId:
-        """
-        Проверяет, все ли переданные пользователи находятся в указанной комнате.
-        Возвращает True, если все пользователи есть в комнате, иначе False
-        """
-        stmt = select(UsersToRooms.user_id).where(
-            UsersToRooms.room_id == room_id, UsersToRooms.user_id.in_(data)
-        )
-
-        result = await self.db.execute(stmt)
-        existing_user_id = set(result.scalars().all())
-
-        return NumUsId(existing_user_id=existing_user_id, in_data=set(data))
-
-    # отдает id комнаты по команде
-    async def get_room_on_team(self, team_id: UUID) -> UUID | None:
-        stmt = select(TeamToRoom.room_id).where(TeamToRoom.team_id == team_id)
-        room_id = await self.db.execute(stmt)
-        return room_id.scalar_one_or_none()
-
-    # удаляет участников из команды
-    async def delete_people_of_team(self, team_id: UUID, data: list[UUID]):
-        stmt = delete(Team).where(Team.team_id == team_id).where(Team.user_id.in_(data))
-        await self.db.execute(stmt)
-        await self.db.commit()
-        return team_id
-
-    # отдает список комнат, в которых состоит пользователь
-    async def get_list_rooms(self, user_id: UUID) -> list[dict]:
-        stmt = (
-            select(Room.room_id, Room.name)
-            .join(UsersToRooms, UsersToRooms.room_id == Room.room_id)
-            .where(UsersToRooms.user_id == user_id)
-        )
-        return (await self.db.execute(stmt)).mappings().all()
-
-    # отдает is_chief юзера по комнате
-    async def get_info_about_user_in_room(
-        self, user_id: UUID, room_id: UUID
-    ) -> bool | None:
-        stmt = (
-            select(UsersToRooms.is_chief)
-            .where(UsersToRooms.user_id == user_id)
-            .where(UsersToRooms.room_id == room_id)
-        )
-        if result := (await self.db.execute(stmt)).scalar_one_or_none():
-            if result:
-                return True
-            return None
-        return None
-
-    # отдает is_chief юзера по команде
-    async def get_info_about_user_in_team(
-        self, user_id: UUID, team_id: UUID
-    ) -> bool | None:
-        stmt = (
-            select(Team.is_chief)
-            .where(Team.user_id == user_id)
-            .where(Team.team_id == team_id)
-        )
-        if result := (await self.db.execute(stmt)).scalar_one_or_none():
-            if result:
-                return True
-            return None
-        return None
-
-    async def write_users_to_room_safe(
-        self, room_id: UUID, data: list[UserListRoom]
-    ) -> bool | None:
-        """
-        Добавляет пользователей в комнату.
-        Если пользователь уже есть — игнорирует, продолжает с остальными.
-        """
+    async def add_room_members(
+        self,
+        room_id: UUID,
+        members: list[RoomMemberIn],
+    ) -> int:
         values = [
-            {"user_id": param.user_id, "room_id": room_id, "is_chief": param.is_chief}
-            for param in data
+            {
+                "user_id": member.user_id,
+                "room_id": room_id,
+                "is_chief": member.is_chief,
+            }
+            for member in members
         ]
-
         stmt = (
             pg_insert(UsersToRooms)
             .values(values)
             .on_conflict_do_nothing(index_elements=["user_id", "room_id"])
         )
-
         result = await self.db.execute(stmt)
-        await self.db.commit()
-        if result.rowcount > 0:
-            return True
-        return None
+        await self.db.flush()
+        return result.rowcount or 0
 
-    # проверяет существование пользователя в команде
-    async def check_user_in_team(self, team_id: UUID, user_id: UUID) -> bool:
-        stmt = select(Team).where(Team.team_id == team_id, Team.user_id == user_id)
+    async def room_chief_ids(self, room_id: UUID) -> set[UUID]:
+        result = await self.db.execute(
+            select(UsersToRooms.user_id).where(
+                UsersToRooms.room_id == room_id,
+                UsersToRooms.is_chief.is_(True),
+            )
+        )
+        return set(result.scalars().all())
+
+    async def remove_room_members(
+        self,
+        room_id: UUID,
+        user_ids: set[UUID],
+    ) -> int:
+        team_ids = select(TeamToRoom.team_id).where(TeamToRoom.room_id == room_id)
+        await self.db.execute(
+            delete(TeamMember).where(
+                TeamMember.team_id.in_(team_ids),
+                TeamMember.user_id.in_(user_ids),
+            )
+        )
+        result = await self.db.execute(
+            delete(UsersToRooms).where(
+                UsersToRooms.room_id == room_id,
+                UsersToRooms.user_id.in_(user_ids),
+            )
+        )
+        await self.db.flush()
+        return result.rowcount or 0
+
+    async def create_team(
+        self,
+        room_id: UUID,
+        name: str,
+        owner_id: UUID,
+    ) -> UUID:
+        team = TeamToRoom(room_id=room_id, name=name)
+        self.db.add(team)
+        await self.db.flush()
+        self.db.add(
+            TeamMember(
+                team_id=team.team_id,
+                user_id=owner_id,
+                role="руководитель",
+                tag="управление",
+                is_chief=True,
+            )
+        )
+        await self.db.flush()
+        return team.team_id
+
+    async def add_team_members(
+        self,
+        team_id: UUID,
+        members: list[TeamMemberIn],
+    ) -> int:
+        values = [
+            {
+                "team_id": team_id,
+                "user_id": member.user_id,
+                "role": member.role,
+                "tag": member.tag,
+                "is_chief": member.is_chief,
+            }
+            for member in members
+        ]
+        stmt = (
+            pg_insert(TeamMember)
+            .values(values)
+            .on_conflict_do_nothing(index_elements=["team_id", "user_id"])
+        )
         result = await self.db.execute(stmt)
-        return result.scalar() is not None
+        await self.db.flush()
+        return result.rowcount or 0
 
-    # отдает список команд, в которых состоит пользователь
-    async def get_list_teams(self, user_id: UUID, room_id: UUID):
-        stmt = select(Team.team_id, Team.name, Team.role, Team.tag).where(
-            Team.user_id == user_id, Team.room_id == room_id
+    async def team_chief_ids(self, team_id: UUID) -> set[UUID]:
+        result = await self.db.execute(
+            select(TeamMember.user_id).where(
+                TeamMember.team_id == team_id,
+                TeamMember.is_chief.is_(True),
+            )
         )
-        return (await self.db.execute(stmt)).mappings().all()
+        return set(result.scalars().all())
 
-    # отдает список команд, всех абсолютно в комнате
-    async def get_list_teams_not_user(self, room_id: UUID):
-        stmt = select(Team.team_id, Team.name, Team.role, Team.tag).where(
-            Team.room_id == room_id
+    async def remove_team_members(
+        self,
+        team_id: UUID,
+        user_ids: set[UUID],
+    ) -> int:
+        result = await self.db.execute(
+            delete(TeamMember).where(
+                TeamMember.team_id == team_id,
+                TeamMember.user_id.in_(user_ids),
+            )
         )
-        return (await self.db.execute(stmt)).mappings().all()
+        await self.db.flush()
+        return result.rowcount or 0
+
+    async def users_in_room(
+        self,
+        room_id: UUID,
+        user_ids: set[UUID],
+    ) -> set[UUID]:
+        if not user_ids:
+            return set()
+        result = await self.db.execute(
+            select(UsersToRooms.user_id).where(
+                UsersToRooms.room_id == room_id,
+                UsersToRooms.user_id.in_(user_ids),
+            )
+        )
+        return set(result.scalars().all())
+
+    async def get_rooms_for_user(self, user_id: UUID) -> list[dict]:
+        result = await self.db.execute(
+            select(Room.room_id, Room.name)
+            .join(UsersToRooms, UsersToRooms.room_id == Room.room_id)
+            .where(UsersToRooms.user_id == user_id)
+            .order_by(Room.name, Room.room_id)
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def get_teams_for_user(
+        self,
+        user_id: UUID,
+        room_id: UUID,
+        include_all: bool,
+    ) -> list[dict]:
+        stmt = select(TeamToRoom.team_id, TeamToRoom.name).where(
+            TeamToRoom.room_id == room_id
+        )
+        if not include_all:
+            stmt = stmt.join(
+                TeamMember,
+                TeamMember.team_id == TeamToRoom.team_id,
+            ).where(TeamMember.user_id == user_id)
+        result = await self.db.execute(stmt.order_by(TeamToRoom.name))
+        return [dict(row) for row in result.mappings().all()]
+
+    async def get_room_members(self, room_id: UUID) -> list[dict]:
+        result = await self.db.execute(
+            select(
+                User.user_id,
+                User.email,
+                User.last_name,
+                User.first_name,
+                User.patronymic_name,
+                UsersToRooms.is_chief,
+            )
+            .join(UsersToRooms, User.user_id == UsersToRooms.user_id)
+            .where(
+                UsersToRooms.room_id == room_id,
+                User.is_deleted.is_(False),
+            )
+            .order_by(User.last_name, User.first_name)
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def get_team_members(self, team_id: UUID) -> list[dict]:
+        result = await self.db.execute(
+            select(
+                User.user_id,
+                User.email,
+                User.last_name,
+                User.first_name,
+                User.patronymic_name,
+                TeamMember.is_chief,
+                TeamMember.role,
+                TeamMember.tag,
+            )
+            .join(TeamMember, User.user_id == TeamMember.user_id)
+            .where(
+                TeamMember.team_id == team_id,
+                User.is_deleted.is_(False),
+            )
+            .order_by(User.last_name, User.first_name)
+        )
+        return [dict(row) for row in result.mappings().all()]
