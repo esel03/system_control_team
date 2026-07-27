@@ -1,0 +1,108 @@
+name: system-control-team
+
+x-app-environment: &app-environment
+  DB_USER: ${DB_USER:-system_control}
+  DB_PASSWORD: ${DB_PASSWORD:-system_control_dev_password}
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: ${DB_NAME:-system_control}
+  SECRET_KEY: ${SECRET_KEY:-local-development-secret-key-change-me}
+  REDIS_URL: redis://redis:6379/0
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  SQL_ECHO: ${SQL_ECHO:-false}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  MAX_REQUEST_BODY_BYTES: ${MAX_REQUEST_BODY_BYTES:-1048576}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+  REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-1}
+
+x-app: &app
+  build:
+    context: .
+    target: runtime
+  image: system-control-team-api:local
+  environment: *app-environment
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-system_control}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-system_control_dev_password}
+      POSTGRES_DB: ${DB_NAME:-system_control}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    logging: *default-logging
+
+  migrate:
+    <<: *app
+    command: ["./migrate.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: "no"
+    logging: *default-logging
+
+  api:
+    <<: *app
+    ports:
+      - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  postgres_data:
+  redis_data:
