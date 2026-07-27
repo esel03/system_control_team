@@ -1,243 +1,157 @@
+from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends
-from main.db.connect import get_async_session
+
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from main.api.auth import get_auth_service
-from main.services.tasks import TaskServices
-from main.services.auth import AuthRegUserServices
+
+from main.api.auth import get_current_user
+from main.db.connect import get_async_session
+from main.db.models.tasks import Status
 from main.repositories.tasks import TaskRepository
+from main.schemas.auth import TokenData
 from main.schemas.tasks import (
-    ListTasksOut,
     TaskCreate,
+    TaskListOut,
     TaskOut,
+    TaskTeamStatsOut,
     TaskUpdate,
     TaskUserStatsOut,
-    TaskTeamStatsOut,
 )
-from main.services.auth import oauth2_scheme
+from main.services.tasks import TaskServices
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+router = APIRouter(tags=["tasks"])
 
 
 def get_task_service(
     session: AsyncSession = Depends(get_async_session),
 ) -> TaskServices:
-    repo = TaskRepository(db=session)
-    return TaskServices(repository=repo)
+    return TaskServices(repository=TaskRepository(db=session))
 
 
-@router.post("/create", summary="Создание задачи", response_model=TaskOut)
+PageLimit = Annotated[int, Query(ge=1, le=100)]
+PageOffset = Annotated[int, Query(ge=0)]
+PeriodDays = Annotated[int, Query(ge=1, le=3650)]
+
+
+@router.post(
+    "/teams/{team_id}/tasks",
+    response_model=TaskOut,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_task(
+    team_id: UUID,
     data: TaskCreate,
-    token: str = Depends(oauth2_scheme),
+    current_user: TokenData = Depends(get_current_user),
     service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TaskOut:
-    """
-    Создаёт новую задачу.
-
-    Параметры:
-    - data: данные для создания задачи (заголовок, описание, исполнитель, сроки).
-    - token: токен аутентификации текущего пользователя.
-
-    Доступ:
-    - авторизованный пользователь может создать задачу.
-
-    Возвращает:
-    - идентификатор созданной задачи.
-    """
-    token_data = await service_auth.get_current_user(token=token)
-
-    task_id = await service.create_task(
-        data=data,
-        author_id=token_data.user_id,
-    )
+    task_id = await service.create_task(data, team_id, current_user.user_id)
     return TaskOut(task_id=task_id)
 
 
-@router.post("/update/{task_id}", summary="Обновление задачи", response_model=TaskOut)
+@router.patch("/tasks/{task_id}", response_model=TaskOut)
 async def update_task(
     task_id: UUID,
     data: TaskUpdate,
-    token: str = Depends(oauth2_scheme),
+    current_user: TokenData = Depends(get_current_user),
     service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TaskOut:
-    """
-    Обновляет существующую задачу.
-
-    Параметры:
-    - task_id: идентификатор задачи для обновления.
-    - data: новые данные задачи.
-    - token: токен аутентификации текущего пользователя.
-
-    Доступ:
-    - автор задачи может редактировать её.
-
-    Возвращает:
-    - идентификатор обновлённой задачи.
-    """
-    token_data = await service_auth.get_current_user(token=token)
-
-    update_task_id = await service.update_task(
-        data=data,
-        task_id=task_id,
-        author_id=token_data.user_id,
-    )
-    return TaskOut(task_id=update_task_id)
+    updated_id = await service.update_task(data, task_id, current_user.user_id)
+    return TaskOut(task_id=updated_id)
 
 
-@router.delete("/delete/{task_id}", summary="Удаление задачи", status_code=204)
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: UUID,
-    token: str = Depends(oauth2_scheme),
+    current_user: TokenData = Depends(get_current_user),
     service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> None:
-    """
-    Удаляет задачу по идентификатору.
-
-    Параметры:
-    - task_id: идентификатор задачи для удаления.
-    - token: токен аутентификации текущего пользователя.
-
-    Доступ:
-    - только автор задачи может её удалить.
-
-    Возвращает:
-    - статус 204 (No Content) при успешном удалении.
-    """
-    token_data = await service_auth.get_current_user(token=token)
-
-    await service.delete_task(
-        task_id=task_id,
-        author_id=token_data.user_id,
-    )
-    return None
+) -> Response:
+    await service.delete_task(task_id, current_user.user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/teams/{team_id}/tasks", summary="Получить задачи команды")
+@router.post("/tasks/{task_id}/complete", status_code=status.HTTP_204_NO_CONTENT)
+async def complete_task(
+    task_id: UUID,
+    current_user: TokenData = Depends(get_current_user),
+    service: TaskServices = Depends(get_task_service),
+) -> Response:
+    await service.complete_task(task_id, current_user.user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/teams/{team_id}/tasks", response_model=TaskListOut)
 async def get_team_tasks(
     team_id: UUID,
-    completed: bool,
-    days: int = 7,
-    token: str = Depends(oauth2_scheme),
+    task_status: Status | None = None,
+    days: PeriodDays = 7,
+    limit: PageLimit = 50,
+    offset: PageOffset = 0,
+    current_user: TokenData = Depends(get_current_user),
     service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> list[ListTasksOut]:
-    """
-    Получает список задач команды за указанный период.
-
-    Параметры:
-    - team_id: идентификатор команды.
-    - completed: флаг завершённых задач (True/False).
-    - days: количество дней для фильтрации (по умолчанию 7).
-    - token: токен аутентификации текущего пользователя.
-
-    Доступ:
-    - члены команды,
-    - руководитель команды.
-
-    Возвращает:
-    - список задач команды с основной информацией.
-    """
-    token_data = await service_auth.get_current_user(token)
-    return await service.get_team_tasks(team_id, token_data.user_id, completed, days)
-
-
-@router.get("/teams/{team_id}/users/{user_id}/tasks", summary="Получить задачи команды")
-async def get__user_in_team_tasks(
-    team_id: UUID,
-    user_id: UUID,
-    completed: bool,
-    days: int = 7,
-    token: str = Depends(oauth2_scheme),
-    service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
-) -> list[ListTasksOut]:
-    """
-    Получает список задач конкретного пользователя в команде.
-
-    Параметры:
-    - team_id: идентификатор команды.
-    - user_id: идентификатор пользователя.
-    - completed: флаг завершённых задач (True/False).
-    - days: количество дней для фильтрации (по умолчанию 7).
-    - token: токен аутентификации текущего пользователя.
-
-    Доступ:
-    - сам пользователь,
-    - руководитель команды.
-
-    Возвращает:
-    - список задач указанного пользователя.
-    """
-    inspector = await service_auth.get_current_user(token)
-    return await service.get_user_tasks(
-        team_id, user_id, inspector.user_id, completed, days
+) -> TaskListOut:
+    return await service.get_team_tasks(
+        team_id,
+        current_user.user_id,
+        task_status,
+        days,
+        limit,
+        offset,
     )
 
 
 @router.get(
-    "/stats/user/{user_id}",
+    "/teams/{team_id}/users/{user_id}/tasks",
+    response_model=TaskListOut,
+)
+async def get_user_tasks(
+    team_id: UUID,
+    user_id: UUID,
+    task_status: Status | None = None,
+    days: PeriodDays = 7,
+    limit: PageLimit = 50,
+    offset: PageOffset = 0,
+    current_user: TokenData = Depends(get_current_user),
+    service: TaskServices = Depends(get_task_service),
+) -> TaskListOut:
+    return await service.get_user_tasks(
+        team_id,
+        user_id,
+        current_user.user_id,
+        task_status,
+        days,
+        limit,
+        offset,
+    )
+
+
+@router.get(
+    "/teams/{team_id}/users/{user_id}/stats",
     response_model=TaskUserStatsOut,
-    summary="Получить статистику задач пользователя",
 )
 async def get_user_task_stats(
-    user_id: UUID,
     team_id: UUID,
-    days: int = 7,
-    token: str = Depends(oauth2_scheme),
+    user_id: UUID,
+    days: PeriodDays = 7,
+    current_user: TokenData = Depends(get_current_user),
     service: TaskServices = Depends(get_task_service),
-    service_auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TaskUserStatsOut:
-    """
-    Получает статистику задач пользователя:
-    - количество завершённых за последние N дней,
-    - количество незавершённых.
-
-    Доступ:
-    - сам пользователь,
-    - руководитель команды.
-    """
-    token_data = await service_auth.get_current_user(token)
-    inspector = token_data.user_id
-    stats = await service.get_user_task_statistics(
-        team_id=team_id, user_id=user_id, inspector_id=inspector, days=days
+    return await service.get_user_task_statistics(
+        team_id,
+        user_id,
+        current_user.user_id,
+        days,
     )
-    return stats
 
 
-@router.get(
-    "/stats/user/{user_id}",
-    response_model=TaskTeamStatsOut,
-    summary="Получить статистику задач пользователя",
-)
+@router.get("/teams/{team_id}/stats", response_model=TaskTeamStatsOut)
 async def get_team_task_stats(
     team_id: UUID,
-    days: int = 7,
-    token: str = Depends(oauth2_scheme),
+    days: PeriodDays = 7,
+    current_user: TokenData = Depends(get_current_user),
     service: TaskServices = Depends(get_task_service),
-    auth: AuthRegUserServices = Depends(get_auth_service),
 ) -> TaskTeamStatsOut:
-    """
-    Получает статистику задач команды:
-    - количество завершённых задач за последние N дней,
-    - количество незавершённых задач.
-
-    Параметры:
-    - team_id: идентификатор команды.
-    - days: количество дней для анализа.
-    - token: токен аутентификации текущего пользователя.
-
-    Доступ:
-    - члены команды,
-    - руководитель команды.
-
-    Возвращает:
-    - объект с количеством завершённых и незавершённых задач.
-    """
-    inspector = await auth.get_current_user(token)
     return await service.get_team_task_statistics(
-        team_id=team_id, inspector_id=inspector.user_id, days=days
+        team_id,
+        current_user.user_id,
+        days,
     )

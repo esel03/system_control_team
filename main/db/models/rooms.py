@@ -1,7 +1,9 @@
-from main.db.base import Base
+import uuid
+
 from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
-import uuid
+
+from main.db.base import Base
 
 
 class Room(Base):

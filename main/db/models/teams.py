@@ -1,10 +1,12 @@
-from sqlalchemy import Uuid, String, Boolean, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
 import uuid
+
+from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint, Uuid, text
+from sqlalchemy.orm import Mapped, mapped_column
+
 from main.db.base import Base
 
 
-class Team(Base):
+class TeamMember(Base):
     __tablename__ = "teams"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -14,18 +16,30 @@ class Team(Base):
         Uuid, ForeignKey("teams_to_rooms.team_id")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.user_id"))
-    room_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("rooms.room_id"))
-    name: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="название команды"
+    role: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        default="неопределена",
+        server_default="неопределена",
+        comment="роль в команде",
     )
-    role: Mapped[str] = mapped_column(String(100), comment="роль в команде")
     tag: Mapped[str] = mapped_column(
-        String(100), comment="направление деятельности в команде"
+        String(100),
+        nullable=False,
+        default="неопределена",
+        server_default="неопределена",
+        comment="направление деятельности в команде",
     )
     is_chief: Mapped[bool] = mapped_column(
-        Boolean, default=False, comment="является ли лидером команды"
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="является ли руководителем команды",
     )
 
-    __table_args__ = (
-        UniqueConstraint("team_id", "user_id", "room_id", name="uix_team_user_room"),
-    )
+    __table_args__ = (UniqueConstraint("team_id", "user_id", name="uix_team_user"),)
+
+
+# Временный совместимый alias для внешних импортов.
+Team = TeamMember

@@ -1,84 +1,117 @@
-from fastapi import HTTPException
-import jwt
-from fastapi import status
 from dataclasses import dataclass
-from datetime import timedelta, datetime
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+import jwt
+from fastapi import HTTPException, status
+
 from main.config import settings
 from main.redis import redis_client
-
-from fastapi.security import OAuth2PasswordBearer
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 @dataclass
 class JwtAuth:
     ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXP_MINUTES = 30
-    REFRESH_TOKEN_EXPIRE_DAYS = 1
-    SECRET_KEY = settings.SECRET_KEY
+    ISSUER = "system-control-team"
+    AUDIENCE = "system-control-team-api"
+    SECRET_KEY = settings.SECRET_KEY.get_secret_value()
 
-    async def create_access_token(self, user_id: str) -> dict[str, str]:
-        access_token = await self._create_token(
-            data={"sub": user_id},
-            expires_delta=timedelta(minutes=self.ACCESS_TOKEN_EXP_MINUTES),
+    @property
+    def access_lifetime(self) -> timedelta:
+        return timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    @property
+    def refresh_lifetime(self) -> timedelta:
+        return timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    async def create_token_pair(self, user_id: str) -> dict[str, str]:
+        access_token = self._create_token(
+            user_id=user_id,
+            token_type="access",
+            lifetime=self.access_lifetime,
         )
-
-        refresh_token = await self._create_token(
-            data={"sub": user_id},
-            expires_delta=timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS),  # days
+        refresh_token = self._create_token(
+            user_id=user_id,
+            token_type="refresh",
+            lifetime=self.refresh_lifetime,
         )
-
+        refresh_payload = self.decode_token(refresh_token, expected_type="refresh")
         await redis_client.setex(
-            name=refresh_token,
-            time=timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS),
-            value=user_id,
+            self._refresh_key(refresh_payload["jti"]),
+            self.refresh_lifetime,
+            user_id,
         )
-
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
         }
 
-    async def _create_token(self, data: dict, expires_delta: timedelta) -> str:
-        expire = datetime.now() + expires_delta
-        data.update({"exp": expire})
-        return jwt.encode(data, self.SECRET_KEY, algorithm=self.ALGORITHM)
+    def _create_token(
+        self,
+        user_id: str,
+        token_type: str,
+        lifetime: timedelta,
+    ) -> str:
+        now = datetime.now(UTC)
+        payload = {
+            "sub": user_id,
+            "typ": token_type,
+            "jti": str(uuid4()),
+            "iat": now,
+            "exp": now + lifetime,
+            "iss": self.ISSUER,
+            "aud": self.AUDIENCE,
+        }
+        return jwt.encode(payload, self.SECRET_KEY, algorithm=self.ALGORITHM)
 
-    async def decode_token(self, token: str) -> str:
+    def decode_token(self, token: str, expected_type: str) -> dict:
         try:
-            data = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
-        except jwt.ExpiredSignatureError:
-            raise Exception("Token expired")
-        except jwt.InvalidTokenError:
-            raise Exception("Invalid token")
-        return data.get("sub")
-
-    async def new_access_token(self, refresh_token: str) -> str:
-        user_id = await redis_client.get(refresh_token)
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or revoked refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
+            payload = jwt.decode(
+                token,
+                self.SECRET_KEY,
+                algorithms=[self.ALGORITHM],
+                audience=self.AUDIENCE,
+                issuer=self.ISSUER,
+                options={"require": ["sub", "typ", "jti", "iat", "exp"]},
             )
-        return await self._create_token(
-            data={"sub": user_id},
-            expires_delta=timedelta(minutes=self.ACCESS_TOKEN_EXP_MINUTES),
-        )
+        except jwt.ExpiredSignatureError as exc:
+            raise self._unauthorized("Срок действия токена истёк") from exc
+        except jwt.InvalidTokenError as exc:
+            raise self._unauthorized("Некорректный токен") from exc
 
-    async def delete_refresh_token(self, refresh_token: str) -> dict[str, str]:
-        if not refresh_token:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Требуется refresh_token",
-            )
+        if payload.get("typ") != expected_type:
+            raise self._unauthorized("Некорректный тип токена")
+        return payload
 
-        deleted = await redis_client.delete(refresh_token)
+    async def rotate_refresh_token(self, refresh_token: str) -> dict[str, str]:
+        payload = self.decode_token(refresh_token, expected_type="refresh")
+        key = self._refresh_key(payload["jti"])
+        stored_user_id = await redis_client.getdel(key)
+        if not stored_user_id or stored_user_id != payload["sub"]:
+            raise self._unauthorized("Refresh token отозван или уже использован")
+        return await self.create_token_pair(stored_user_id)
+
+    async def revoke_refresh_token(
+        self,
+        refresh_token: str,
+        expected_user_id: str,
+    ) -> None:
+        payload = self.decode_token(refresh_token, expected_type="refresh")
+        if payload["sub"] != expected_user_id:
+            raise self._unauthorized("Токен принадлежит другому пользователю")
+        deleted = await redis_client.delete(self._refresh_key(payload["jti"]))
         if not deleted:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Неверный или уже отозванный refresh token",
-            )
-        return {"detail": "Вы успешно вышли из аккаунта"}
+            raise self._unauthorized("Refresh token уже отозван")
+
+    @staticmethod
+    def _refresh_key(jti: str) -> str:
+        return f"auth:refresh:{jti}"
+
+    @staticmethod
+    def _unauthorized(detail: str) -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
